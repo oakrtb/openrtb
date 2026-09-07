@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/oakrtb/openrtb/schema/jsonschema/native.schema.json",
+  "title": "OakRTB Native Markup Request 1.2",
+  "description": "Native Ads specification 1.1+ root object encoded as Imp.native.request JSON string.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["assets"],
+  "properties": {
+    "ver": { "type": "string" },
+    "context": { "type": "integer" },
+    "contextsubtype": { "type": "integer" },
+    "plcmttype": { "type": "integer" },
+    "plcmtcnt": { "type": "integer" },
+    "seq": { "type": "integer" },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Asset" }
+    },
+    "aurlsupport": { "type": "integer", "enum": [0, 1] },
+    "durlsupport": { "type": "integer", "enum": [0, 1] },
+    "eventtrackers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["event", "methods"],
+        "properties": {
+          "event": { "type": "integer" },
+          "methods": { "type": "array", "items": { "type": "integer" } },
+          "ext": { "type": "object" }
+        }
+      }
+    },
+    "privacy": { "type": "integer", "enum": [0, 1] },
+    "ext": { "type": "object" }
+  },
+  "$defs": {
+    "Asset": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "integer" },
+        "required": { "type": "integer", "enum": [0, 1] },
+        "title": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["len"],
+          "properties": {
+            "len": { "type": "integer", "minimum": 1 },
+            "ext": { "type": "object" }
+          }
+        },
+        "img": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "type": { "type": "integer" },
+            "w": { "type": "integer" },
+            "h": { "type": "integer" },
+            "wmin": { "type": "integer" },
+            "hmin": { "type": "integer" },
+            "mimes": { "type": "array", "items": { "type": "string" } },
+            "ext": { "type": "object" }
+          }
+        },
+        "video": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["mimes", "minduration", "maxduration", "protocols"],
+          "properties": {
+            "mimes": { "type": "array", "items": { "type": "string" } },
+            "minduration": { "type": "integer" },
+            "maxduration": { "type": "integer" },
+            "protocols": { "type": "array", "items": { "type": "integer" } },
+            "ext": { "type": "object" }
+          }
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["type"],
+          "properties": {
+            "type": { "type": "integer" },
+            "len": { "type": "integer" },
+            "ext": { "type": "object" }
+          }
+        },
+        "ext": { "type": "object" }
+      }
+    }
+  }
+}

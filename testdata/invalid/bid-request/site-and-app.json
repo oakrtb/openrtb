@@ -1,5 +1,7 @@
 {
   "id": "site-and-app",
+  "at": 1,
+  "cur": ["USD"],
   "imp": [
     {
       "id": "1",

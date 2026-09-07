@@ -6,4 +6,6 @@ venv/
 .idea/
 .vscode/
 *.swp
-/generated/
+/gen/
+sdk/java/target/
+sdk/rust/target/

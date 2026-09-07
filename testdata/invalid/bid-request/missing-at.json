@@ -1,0 +1,10 @@
+{
+  "id": "req-without-at",
+  "cur": ["USD"],
+  "imp": [
+    {
+      "id": "1",
+      "banner": { "w": 300, "h": 250 }
+    }
+  ]
+}

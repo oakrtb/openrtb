@@ -4,7 +4,11 @@ OakRTB 版本写在 `VERSION`，遵循 SemVer。
 
 ## 兼容 OpenRTB
 
-线格式 JSON 字段名与 IAB OpenRTB 2.6 对齐。`x-openrtb-version` 填 `2.6`，表示对象模型来源，不是 OakRTB 自己的 semver。
+线格式 JSON 字段名与 IAB OpenRTB 2.6 对齐。当前钉住的规范快照为 **`2.6-202606`**
+（https://github.com/InteractiveAdvertisingBureau/openrtb2.x/releases/tag/2.6-202606）。
+
+`x-openrtb-version` 仍填 `2.6`（IAB 线格式主次版本）；OakRTB 自己的 semver 写在 `VERSION`。
+文档与 CHANGELOG 应同时写明所对齐的 dated snapshot。
 
 ## 什么算兼容变更
 
@@ -30,5 +34,6 @@ JSON Schema 是校验权威。改对象时同一 PR 必须同时更新：
 1. `schema/jsonschema/`
 2. `proto/oakrtb/v2/openrtb.proto`（若该字段走 protobuf）
 3. `docs/objects.md` / `docs/spec.md`
-4. `examples/` 与 `testdata/invalid/`
+4. `examples/bid-request|bid-response/` 与 `testdata/invalid/`
 5. `CHANGELOG.md`
+6. 若改了 schema：`make sync-schemas` 并跑 `make sdk-test`

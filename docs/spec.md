@@ -1,6 +1,6 @@
 # 协议规范
 
-OakRTB 0.1.0 定义 Exchange（供给）与 Bidder（需求）之间的实时竞价接口。JSON 字段名、对象层次与语义对齐 IAB OpenRTB 2.6，便于对接现有 DSP / SSP。
+OakRTB 0.2.0 定义 Exchange（供给）与 Bidder（需求）之间的实时竞价接口。JSON 字段名、对象层次与语义对齐 IAB OpenRTB **2.6-202606**，便于对接现有 DSP / SSP。
 
 配套文档：
 
@@ -92,7 +92,9 @@ Exchange 在 `nurl` / `burl` / `lurl` 以及 markup 中替换宏：
 | `${AUCTION_BID_ID}` | BidResponse.bidid |
 | `${AUCTION_IMP_ID}` | 中标 imp.id |
 | `${AUCTION_SEAT_ID}` | seat |
-| `${AUCTION_PRICE}` | 成交价（已含折扣） |
+| `${AUCTION_PRICE}` | 结算成交价（若有折扣，为折扣后买方应付价；见 2.6-202606） |
+| `${AUCTION_DISCOUNT_PCT}` | 折扣百分比（OpenRTB 2.6-202606） |
+| `${AUCTION_DISCOUNT_CPM}` | 折扣对应的 CPM 金额（OpenRTB 2.6-202606） |
 | `${AUCTION_CURRENCY}` | 币种 |
 | `${AUCTION_MIN_TO_WIN}` | 赢或平所需最低价 |
 | `${AUCTION_LOSS}` | 丢单原因码 |
@@ -112,4 +114,4 @@ Exchange 在 `nurl` / `burl` / `lurl` 以及 markup 中替换宏：
 
 ## 样例
 
-见 `examples/`。最小 Banner 请求只需要 `id` + 一个带 `banner` 的 `imp`。生产流量还应带 `site` 或 `app`、`device`、`source.schain`。
+见 `examples/bid-request/` 与 `examples/bid-response/`。最小 Banner 请求只需要 `id` + 一个带 `banner` 的 `imp`。生产流量还应带 `site` 或 `app`、`device`、`source.schain`。

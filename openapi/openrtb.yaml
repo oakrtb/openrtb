@@ -1,12 +1,13 @@
 openapi: 3.1.0
 info:
   title: OakRTB OpenRTB Bidding API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     HTTP contract for OakRTB real-time bidding.
 
-    Compatible with IAB OpenRTB 2.6 JSON. Exchange POSTs a BidRequest;
-    bidder returns BidResponse (200), no-bid (204), or a BidResponse with `nbr`.
+    Compatible with IAB OpenRTB 2.6 JSON (aligned snapshot 2.6-202606).
+    Exchange POSTs a BidRequest; bidder returns BidResponse (200), no-bid (204),
+    or a BidResponse with `nbr`.
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -32,7 +33,9 @@ paths:
           schema:
             type: string
             example: "2.6"
-          description: OpenRTB protocol version of the request body.
+          description: |
+            OpenRTB protocol version of the request body (major.minor, e.g. "2.6").
+            OakRTB object model is aligned to dated snapshot 2.6-202606.
         - in: header
           name: Content-Type
           required: true
@@ -46,6 +49,28 @@ paths:
           required: false
           schema:
             type: string
+            description: |
+              Comma-separated content codings the exchange can decode on the
+              response (RFC 9110). Tokens may include qvalues.
+              Supported: gzip, deflate, br, zstd. Omit for uncompressed responses.
+            examples:
+              - gzip
+              - gzip, br, zstd;q=0.8
+              - gzip, deflate, br, zstd
+          example: gzip, br, zstd;q=0.8
+        - in: header
+          name: Content-Encoding
+          required: false
+          schema:
+            type: string
+            description: |
+              Encoding applied to this request body. Single token only.
+              Supported: gzip, deflate, br, zstd. Omit when uncompressed.
+            enum:
+              - gzip
+              - deflate
+              - br
+              - zstd
             example: gzip
       requestBody:
         required: true
@@ -65,8 +90,17 @@ paths:
                 type: string
                 example: "2.6"
             Content-Encoding:
+              description: |
+                Encoding of the response body. Must be one of the algorithms
+                listed in the request Accept-Encoding (or omitted if none).
+                Supported: gzip, deflate, br, zstd.
               schema:
                 type: string
+                enum:
+                  - gzip
+                  - deflate
+                  - br
+                  - zstd
                 example: gzip
           content:
             application/json:
@@ -80,7 +114,16 @@ paths:
         "204":
           description: No-bid with empty body.
         "400":
-          description: Malformed or corrupt BidRequest.
+          description: |
+            Malformed JSON/protobuf, or BidRequest failed JSON Schema validation.
+            Body is a ValidationResult with ok=false.
+          content:
+            application/json:
+              schema:
+                $ref: "../schema/jsonschema/validation-result.schema.json"
+              examples:
+                missingImp:
+                  $ref: "#/components/examples/ValidationFailed"
 
 components:
   examples:
@@ -125,4 +168,13 @@ components:
       summary: Structured no-bid
       value:
         id: "80ce30c53c16e6ede735f123ef6e32361bfc7b22"
+        cur: "USD"
         nbr: 2
+    ValidationFailed:
+      summary: Schema validation failed
+      value:
+        ok: false
+        errors:
+          - code: required
+            path: "/imp"
+            message: "'imp' is a required property"

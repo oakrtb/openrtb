@@ -1,0 +1,20 @@
+[package]
+name = "oakrtb-sdk"
+version = "0.2.0"
+edition = "2021"
+description = "OakRTB OpenRTB models and JSON Schema validation"
+license = "Apache-2.0"
+repository = "https://github.com/oakrtb/openrtb"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+jsonschema = "0.28"
+prost = "0.13"
+thiserror = "2"
+
+[build-dependencies]
+prost-build = "0.13"
+
+[dev-dependencies]
+walkdir = "2"

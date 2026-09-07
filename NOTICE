@@ -2,7 +2,7 @@ OakRTB OpenRTB Protocol
 Copyright 2026 oakrtb
 
 This project defines a machine-readable bidding protocol compatible with
-IAB Tech Lab OpenRTB 2.6.
+IAB Tech Lab OpenRTB 2.6 (aligned dated snapshot 2.6-202606).
 
 The object names, JSON field names, and protocol semantics follow the
 OpenRTB 2.6 specification published by IAB Tech Lab, which is licensed

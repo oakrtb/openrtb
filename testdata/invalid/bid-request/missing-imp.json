@@ -1,4 +1,5 @@
 {
   "id": "req-without-imp",
-  "at": 1
+  "at": 1,
+  "cur": ["USD"]
 }

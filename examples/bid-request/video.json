@@ -50,6 +50,10 @@
       "season": "2",
       "episode": 5,
       "livestream": 0,
+      "realtime": 0,
+      "firstbroadcast": 0,
+      "gtax": 9,
+      "genres": ["1"],
       "len": 2400,
       "network": { "name": "Example Network", "domain": "examplenetwork.com" },
       "channel": { "name": "Example Channel", "domain": "examplechannel.com" }

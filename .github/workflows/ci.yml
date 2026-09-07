@@ -16,3 +16,48 @@ jobs:
         run: python3 -m pip install -r scripts/requirements.txt
       - name: Validate examples
         run: python3 scripts/validate.py
+
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Check protobuf
+        run: make proto-check
+
+  sdk-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Test Go SDK
+        run: make sync-schemas sdk-test-go
+
+  sdk-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Test and package Java SDK
+        run: make sync-schemas sdk-test-java jar
+
+  sdk-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Test Rust SDK
+        run: make sync-schemas sdk-test-rust

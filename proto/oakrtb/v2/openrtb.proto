@@ -2,520 +2,1278 @@ syntax = "proto3";
 
 package oakrtb.v2;
 
-option go_package = "github.com/oakrtb/openrtb/gen/go/oakrtb/v2;openrtb";
+option go_package = "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2;openrtb";
 option java_package = "com.oakrtb.openrtb.v2";
 option java_multiple_files = true;
 option java_outer_classname = "OpenRtbProto";
 
-// OakRTB protocol 0.1.0 — protobuf encoding of OpenRTB 2.6 JSON objects.
-// JSON field names match IAB OpenRTB 2.6 so the same payload can travel as
-// application/json or application/x-protobuf.
+// OakRTB protocol 0.2.0 — OpenRTB 2.6-202606 的 protobuf 编码。
+// JSON 字段名与 IAB OpenRTB 2.6 对齐，同一业务载荷可走 application/json 或 application/x-protobuf。
 //
-// Extension object `ext` is encoded as a JSON object string to keep this proto
-// self-contained (no google.protobuf.Struct dependency).
+// 权威校验仍以 schema/jsonschema 为准。
+// 注释约定：每个 message/enum 须说明结构用途与场景；每个字段/枚举值须说明含义；
+// 可枚举整型字段在注释中写明取值来源（对应 enum）及关键取值释义；特殊值（如 startdelay/slotinpod 负值）就地写清。
+// 可枚举整型字段：标准取值定义在上方 enum（源自 OpenRTB 2.6 / AdCOM 1.0）；
+// 字段类型保持 int32，以便兼容 >=500 厂商扩展及 startdelay/slotinpod 等特殊负值。
+// ext 统一编码为 JSON 对象字符串，避免依赖 google.protobuf.Struct。
 
-// Markup type corresponding to Bid.mtype / Imp subordinate object.
+// ---------------------------------------------------------------------------
+// 枚举
+// ---------------------------------------------------------------------------
+
+// MarkupType：素材形态，对应 Bid.mtype，并暗示 Imp 下应出现的子对象。
+// 场景：同一 Imp 同时带 banner/video 等多形态时，出价必须用 mtype 声明中了哪一种。
 enum MarkupType {
-  MARKUP_TYPE_UNSPECIFIED = 0;
-  MARKUP_TYPE_BANNER = 1;
-  MARKUP_TYPE_VIDEO = 2;
-  MARKUP_TYPE_AUDIO = 3;
-  MARKUP_TYPE_NATIVE = 4;
+  MARKUP_TYPE_UNSPECIFIED = 0; // 未指定；多形态 Imp 时不推荐
+  MARKUP_TYPE_BANNER = 1;      // 横幅/展示；对应 Imp.banner
+  MARKUP_TYPE_VIDEO = 2;       // 视频；对应 Imp.video
+  MARKUP_TYPE_AUDIO = 3;       // 音频；对应 Imp.audio
+  MARKUP_TYPE_NATIVE = 4;      // 原生；对应 Imp.native
 }
 
+// AuctionType：拍卖结算方式。
+// 场景：BidRequest.at 描述整场拍卖；Deal.at 可额外用固定价（3）。
 enum AuctionType {
-  AUCTION_TYPE_UNSPECIFIED = 0;
-  AUCTION_TYPE_FIRST_PRICE = 1;
-  AUCTION_TYPE_SECOND_PRICE_PLUS = 2;
-  AUCTION_TYPE_FIXED_PRICE = 3; // Deal.at only
+  AUCTION_TYPE_UNSPECIFIED = 0;       // 未指定
+  AUCTION_TYPE_FIRST_PRICE = 1;       // 一价：胜出者付自己的出价
+  AUCTION_TYPE_SECOND_PRICE_PLUS = 2; // 二价+：付次高价（可加增量）；BidRequest.at 常用此值（现为必填字段）
+  AUCTION_TYPE_FIXED_PRICE = 3;       // 固定价；仅 Deal.at
+  // >=500：Exchange 自定义拍卖类型
 }
 
+// BannerAdType：Banner.btype 屏蔽的横幅类型（OpenRTB Banner Ad Types）。
+enum BannerAdType {
+  BANNER_AD_TYPE_UNSPECIFIED = 0; // 未指定
+  BANNER_AD_TYPE_XHTML_TEXT = 1;    // XHTML 文本广告（多为移动）
+  BANNER_AD_TYPE_XHTML_BANNER = 2;  // XHTML Banner
+  BANNER_AD_TYPE_JAVASCRIPT = 3;    // JavaScript 广告
+  BANNER_AD_TYPE_IFRAME = 4;        // iframe
+}
+
+// CreativeAttribute：Banner/Video/Audio/Native.battr 与 Bid.attr。
+// >=500 为厂商自定义。
+enum CreativeAttribute {
+  CREATIVE_ATTRIBUTE_UNSPECIFIED = 0; // 未指定
+  CREATIVE_ATTRIBUTE_AUDIO_AUTOPLAY = 1;              // 音频广告（自动播放）
+  CREATIVE_ATTRIBUTE_AUDIO_USER_INITIATED = 2;       // 音频广告（用户触发）
+  CREATIVE_ATTRIBUTE_EXPANDABLE_AUTOMATIC = 3;       // 可扩展（自动）
+  CREATIVE_ATTRIBUTE_EXPANDABLE_CLICK = 4;           // 可扩展（点击触发）
+  CREATIVE_ATTRIBUTE_EXPANDABLE_ROLLOVER = 5;        // 可扩展（悬停触发）
+  CREATIVE_ATTRIBUTE_IN_BANNER_VIDEO_AUTOPLAY = 6;   // Banner 内视频（自动播放）
+  CREATIVE_ATTRIBUTE_IN_BANNER_VIDEO_USER = 7;       // Banner 内视频（用户触发）
+  CREATIVE_ATTRIBUTE_POP = 8;                        // 弹出（Over/Under/Exit）
+  CREATIVE_ATTRIBUTE_PROVOCATIVE = 9;                // 挑逗/暗示性画面
+  CREATIVE_ATTRIBUTE_ANNOYING = 10;                  // 抖动/闪烁/极端动画等
+  CREATIVE_ATTRIBUTE_SURVEYS = 11;                   // 问卷
+  CREATIVE_ATTRIBUTE_TEXT_ONLY = 12;                 // 纯文本
+  CREATIVE_ATTRIBUTE_USER_INTERACTIVE = 13;          // 用户互动（如嵌入游戏）
+  CREATIVE_ATTRIBUTE_ALERT_STYLE = 14;               // 系统对话框/警告样式
+  CREATIVE_ATTRIBUTE_HAS_AUDIO_TOGGLE = 15;          // 有声音开关
+  CREATIVE_ATTRIBUTE_HAS_SKIP_BUTTON = 16;           // 提供跳过按钮
+  CREATIVE_ATTRIBUTE_FLASH = 17;                     // Adobe Flash
+  CREATIVE_ATTRIBUTE_RESPONSIVE = 18;                // 响应式/无固定尺寸/流体
+}
+
+// AdPosition：Banner.pos / Video.pos（AdCOM Placement Positions）。
+enum AdPosition {
+  AD_POSITION_UNKNOWN = 0;      // 未知
+  AD_POSITION_ABOVE_THE_FOLD = 1; // 首屏上方
+  AD_POSITION_LOCKED = 2;       // 固定锁定位置
+  AD_POSITION_BELOW_THE_FOLD = 3; // 首屏下方
+  AD_POSITION_HEADER = 4;       // 页头
+  AD_POSITION_FOOTER = 5;       // 页脚
+  AD_POSITION_SIDEBAR = 6;      // 侧栏
+  AD_POSITION_FULLSCREEN = 7;   // 全屏
+}
+
+// ExpandableDirection：Banner.expdir。
+enum ExpandableDirection {
+  EXPANDABLE_DIRECTION_UNSPECIFIED = 0; // 未指定
+  EXPANDABLE_DIRECTION_LEFT = 1;        // 向左
+  EXPANDABLE_DIRECTION_RIGHT = 2;       // 向右
+  EXPANDABLE_DIRECTION_UP = 3;          // 向上
+  EXPANDABLE_DIRECTION_DOWN = 4;        // 向下
+  EXPANDABLE_DIRECTION_FULLSCREEN = 5;  // 全屏
+  EXPANDABLE_DIRECTION_RESIZE = 6;      // 缩小/最小化
+}
+
+// ApiFramework：banner/video/audio/native.api 与 Bid.apis。>=500 厂商自定义。
+enum ApiFramework {
+  API_FRAMEWORK_UNSPECIFIED = 0; // 未指定
+  API_FRAMEWORK_VPAID_1 = 1;   // VPAID 1.0
+  API_FRAMEWORK_VPAID_2 = 2;   // VPAID 2.0
+  API_FRAMEWORK_MRAID_1 = 3;   // MRAID 1.0
+  API_FRAMEWORK_ORMMA = 4;     // ORMMA
+  API_FRAMEWORK_MRAID_2 = 5;   // MRAID 2.0
+  API_FRAMEWORK_MRAID_3 = 6;   // MRAID 3.0
+  API_FRAMEWORK_OMID_1 = 7;    // OMID 1.0（Open Measurement）
+  API_FRAMEWORK_SIMID_1 = 8;   // SIMID 1.0
+  API_FRAMEWORK_SIMID_1_1 = 9; // SIMID 1.1
+}
+
+// Protocol：Video/Audio.protocols 与 Bid.protocol（VAST/DAAST 版本）。
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0; // 未指定
+  PROTOCOL_VAST_1_0 = 1; // VAST 1.0
+  PROTOCOL_VAST_2_0 = 2; // VAST 2.0
+  PROTOCOL_VAST_3_0 = 3; // VAST 3.0
+  PROTOCOL_VAST_1_0_WRAPPER = 4; // VAST 1.0 Wrapper
+  PROTOCOL_VAST_2_0_WRAPPER = 5; // VAST 2.0 Wrapper
+  PROTOCOL_VAST_3_0_WRAPPER = 6; // VAST 3.0 Wrapper
+  PROTOCOL_VAST_4_0 = 7; // VAST 4.0
+  PROTOCOL_VAST_4_0_WRAPPER = 8; // VAST 4.0 Wrapper
+  PROTOCOL_DAAST_1_0 = 9; // DAAST 1.0
+  PROTOCOL_DAAST_1_0_WRAPPER = 10; // DAAST 1.0 Wrapper
+  PROTOCOL_VAST_4_1 = 11; // VAST 4.1
+  PROTOCOL_VAST_4_1_WRAPPER = 12; // VAST 4.1 Wrapper
+  PROTOCOL_VAST_4_2 = 13; // VAST 4.2
+  PROTOCOL_VAST_4_2_WRAPPER = 14; // VAST 4.2 Wrapper
+  PROTOCOL_VAST_4_3 = 15; // VAST 4.3
+  PROTOCOL_VAST_4_3_WRAPPER = 16; // VAST 4.3 Wrapper
+}
+
+// VideoPlcmt：Video.plcmt（OpenRTB 2.6-202303+，替代旧 placement）。
+enum VideoPlcmt {
+  VIDEO_PLCMT_UNSPECIFIED = 0; // 未指定
+  VIDEO_PLCMT_INSTREAM = 1;              // 随主内容播；默认有声；前/中/后贴
+  VIDEO_PLCMT_ACCOMPANYING_CONTENT = 2;  // 伴随图文；入视口播放
+  VIDEO_PLCMT_INTERSTITIAL = 3;          // 插屏占满视口，不可滚走
+  VIDEO_PLCMT_NO_CONTENT = 4;            // 无视频内容：幻灯/信息流/悬浮播放器等
+  VIDEO_PLCMT_PAUSE = 5;                 // 用户暂停内容时展示（AdCOM 新增值）
+  VIDEO_PLCMT_SCREENSAVER = 6;           // 屏保场景
+  VIDEO_PLCMT_OVERLAY = 7;               // 叠在内容上（非传统广告歇）
+  VIDEO_PLCMT_SQUEEZEBACK = 8;           // 内容缩小与广告分屏
+  VIDEO_PLCMT_IN_SCENE = 9;              // 植入内容画面
+}
+
+// VideoLinearity：Video.linearity（期望的 VAST 响应形态）。
+enum VideoLinearity {
+  VIDEO_LINEARITY_UNSPECIFIED = 0; // 未指定
+  VIDEO_LINEARITY_LINEAR = 1;      // 线性贴片（含视频资产）
+  VIDEO_LINEARITY_NON_LINEAR = 2;  // 非线性/Overlay
+}
+
+// PlaybackMethod：Video.playbackmethod。
+enum PlaybackMethod {
+  PLAYBACK_METHOD_UNSPECIFIED = 0; // 未指定
+  PLAYBACK_METHOD_PAGE_LOAD_SOUND_ON = 1;      // 页加载即播，有声
+  PLAYBACK_METHOD_PAGE_LOAD_SOUND_OFF = 2;     // 页加载即播，默认静音
+  PLAYBACK_METHOD_CLICK_SOUND_ON = 3;          // 点击播放，有声
+  PLAYBACK_METHOD_MOUSE_OVER_SOUND_ON = 4;     // 悬停播放，有声
+  PLAYBACK_METHOD_VIEWPORT_SOUND_ON = 5;       // 进入视口播放，有声
+  PLAYBACK_METHOD_VIEWPORT_SOUND_OFF = 6;      // 进入视口播放，默认静音
+  PLAYBACK_METHOD_CONTINUOUS = 7;              // 连续播放直至用户停止
+}
+
+// PlaybackCessationMode：Video.playbackend。
+enum PlaybackCessationMode {
+  PLAYBACK_CESSATION_UNSPECIFIED = 0; // 未指定
+  PLAYBACK_CESSATION_COMPLETION_OR_USER = 1;           // 播完或用户终止
+  PLAYBACK_CESSATION_LEAVING_VIEWPORT_OR_USER = 2;     // 离开视口或用户终止
+  PLAYBACK_CESSATION_FLOATING_UNTIL_COMPLETION = 3;   // 离视口后悬浮继续直至播完/用户终止
+}
+
+// DeliveryMethod：Video/Audio.delivery。
+enum DeliveryMethod {
+  DELIVERY_METHOD_UNSPECIFIED = 0; // 未指定
+  DELIVERY_METHOD_STREAMING = 1;     // 流式
+  DELIVERY_METHOD_PROGRESSIVE = 2;   // 渐进下载
+  DELIVERY_METHOD_DOWNLOAD = 3;      // 完整下载
+}
+
+// CompanionType：Video/Audio.companiontype。
+enum CompanionType {
+  COMPANION_TYPE_UNSPECIFIED = 0; // 未指定
+  COMPANION_TYPE_STATIC = 1;   // Static Resource
+  COMPANION_TYPE_HTML = 2;     // HTML Resource
+  COMPANION_TYPE_IFRAME = 3;   // iframe Resource
+}
+
+// VideoCompanionMode：Banner.vcm（视频伴生模式）。
+enum VideoCompanionMode {
+  VIDEO_COMPANION_MODE_CONCURRENT = 0; // 与视频同时展示
+  VIDEO_COMPANION_MODE_END_CARD = 1;   // 视频结束后的 end card
+}
+
+// DeviceType：Device.devicetype（AdCOM Device Types）。
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0; // 未指定
+  DEVICE_TYPE_MOBILE_TABLET_GENERAL = 1; // 通用移动（4/5 未知时）
+  DEVICE_TYPE_PERSONAL_COMPUTER = 2;     // PC/笔记本浏览器
+  DEVICE_TYPE_CONNECTED_TV = 3;          // 智能电视 / CTV
+  DEVICE_TYPE_PHONE = 4;                 // 手机
+  DEVICE_TYPE_TABLET = 5;                // 平板
+  DEVICE_TYPE_CONNECTED_DEVICE = 6;      // 主机/流媒体盒等非 TV
+  DEVICE_TYPE_SET_TOP_BOX = 7;           // 运营商机顶盒
+  DEVICE_TYPE_OOH_DEVICE = 8;            // 户外屏设备
+}
+
+// ConnectionType：Device.connectiontype。0=未知。
+enum ConnectionType {
+  CONNECTION_TYPE_UNKNOWN = 0;           // 未知
+  CONNECTION_TYPE_ETHERNET = 1;          // 有线以太网
+  CONNECTION_TYPE_WIFI = 2;              // Wi‑Fi
+  CONNECTION_TYPE_CELLULAR_UNKNOWN = 3;  // 蜂窝（代数未知）
+  CONNECTION_TYPE_CELLULAR_2G = 4; // 蜂窝 2G
+  CONNECTION_TYPE_CELLULAR_3G = 5; // 蜂窝 3G
+  CONNECTION_TYPE_CELLULAR_4G = 6; // 蜂窝 4G
+  CONNECTION_TYPE_CELLULAR_5G = 7; // 蜂窝 5G
+}
+
+// LocationType：Geo.type。
+enum LocationType {
+  LOCATION_TYPE_UNSPECIFIED = 0; // 未指定
+  LOCATION_TYPE_GPS = 1;             // GPS/系统定位服务
+  LOCATION_TYPE_IP = 2;              // IP 推断
+  LOCATION_TYPE_USER_PROVIDED = 3;   // 用户提供（如注册资料）
+}
+
+// IpLocationService：Geo.ipservice。
+enum IpLocationService {
+  IP_LOCATION_SERVICE_UNSPECIFIED = 0; // 未指定
+  IP_LOCATION_SERVICE_IP2LOCATION = 1; // IP2Location
+  IP_LOCATION_SERVICE_NEUSTAR = 2;       // Neustar (Quova)
+  IP_LOCATION_SERVICE_MAXMIND = 3; // MaxMind
+  IP_LOCATION_SERVICE_NETACUITY = 4;     // Digital Element
+}
+
+// ContentContext：Content.context。
+enum ContentContext {
+  CONTENT_CONTEXT_UNSPECIFIED = 0; // 未指定
+  CONTENT_CONTEXT_VIDEO = 1;        // 视频文件/流
+  CONTENT_CONTEXT_GAME = 2;         // 游戏
+  CONTENT_CONTEXT_MUSIC = 3;        // 音乐/电台流
+  CONTENT_CONTEXT_APPLICATION = 4;  // 应用
+  CONTENT_CONTEXT_TEXT = 5;         // 文本页/文章
+  CONTENT_CONTEXT_OTHER = 6;        // 其他
+  CONTENT_CONTEXT_UNKNOWN = 7;      // 未知
+}
+
+// ProductionQuality：Content.prodq。
+enum ProductionQuality {
+  PRODUCTION_QUALITY_UNKNOWN = 0;         // 未知
+  PRODUCTION_QUALITY_PROFESSIONAL = 1;    // 专业制作
+  PRODUCTION_QUALITY_PROSUMER = 2;        // 准专业
+  PRODUCTION_QUALITY_USER_GENERATED = 3;  // UGC
+}
+
+// MediaRating：Content.qagmediarating / Bid.qagmediarating（QAG/IQG）。
+enum MediaRating {
+  MEDIA_RATING_UNSPECIFIED = 0; // 未指定
+  MEDIA_RATING_ALL_AUDIENCES = 1;   // 全年龄
+  MEDIA_RATING_OVER_12 = 2;         // 12 岁以上
+  MEDIA_RATING_MATURE = 3;          // 成人向
+}
+
+// CategoryTaxonomy：*.cattax。>=500 厂商自定义。
+enum CategoryTaxonomy {
+  CATEGORY_TAXONOMY_UNSPECIFIED = 0; // 未指定
+  CATEGORY_TAXONOMY_IAB_CONTENT_1_0 = 1;   // IAB Content Category 1.0（已不推荐）
+  CATEGORY_TAXONOMY_IAB_CONTENT_2_0 = 2;   // IAB Content Category 2.0（已不推荐）
+  CATEGORY_TAXONOMY_IAB_AD_PRODUCT_1_0 = 3; // IAB Ad Product Taxonomy 1.0
+  CATEGORY_TAXONOMY_IAB_AUDIENCE_1_1 = 4;  // IAB Audience Taxonomy 1.1
+  CATEGORY_TAXONOMY_IAB_CONTENT_2_1 = 5;   // IAB Content Taxonomy 2.1
+  CATEGORY_TAXONOMY_IAB_CONTENT_2_2 = 6;   // IAB Content Taxonomy 2.2
+  CATEGORY_TAXONOMY_IAB_CONTENT_3_0 = 7;   // IAB Content Taxonomy 3.0（若实现支持）
+}
+
+// FeedType：Audio.feed。
+enum FeedType {
+  FEED_TYPE_UNSPECIFIED = 0; // 未指定
+  FEED_TYPE_MUSIC_SERVICE = 1;   // 音乐服务
+  FEED_TYPE_FM_AM_BROADCAST = 2; // 调频/调幅广播
+  FEED_TYPE_PODCAST = 3;         // 播客
+}
+
+// VolumeNormalizationMode：Audio.nvol。
+enum VolumeNormalizationMode {
+  VOLUME_NORM_NONE = 0;                 // 无
+  VOLUME_NORM_AVERAGE = 1;              // 按内容平均音量归一
+  VOLUME_NORM_PEAK = 2;                 // 按内容峰值归一
+  VOLUME_NORM_LOUDNESS = 3;             // 响度归一
+  VOLUME_NORM_CUSTOM = 4;               // 自定义归一
+}
+
+// AgentType：UID.atype。>=500 厂商自定义。
+enum AgentType {
+  AGENT_TYPE_UNSPECIFIED = 0; // 未指定
+  AGENT_TYPE_WEB_OR_DEVICE = 1;  // 浏览器/设备级 ID（cookie 等）
+  AGENT_TYPE_IN_APP = 2;         // App 内（设备广告 ID 等）
+  AGENT_TYPE_PERSON = 3;         // 跨设备人物级 ID
+}
+
+// NoBidReason：BidResponse.nbr。>=500 Exchange 自定义。
+enum NoBidReason {
+  NO_BID_REASON_UNKNOWN_ERROR = 0;              // 未知错误
+  NO_BID_REASON_TECHNICAL_ERROR = 1;            // 技术错误
+  NO_BID_REASON_INVALID_REQUEST = 2;            // 请求非法
+  NO_BID_REASON_KNOWN_WEB_SPIDER = 3;           // 已知爬虫
+  NO_BID_REASON_SUSPECTED_NONHUMAN = 4;         // 疑似非人流量
+  NO_BID_REASON_CLOUD_OR_PROXY_IP = 5;          // 云/机房/代理 IP
+  NO_BID_REASON_UNSUPPORTED_DEVICE = 6;         // 不支持的设备
+  NO_BID_REASON_BLOCKED_PUBLISHER = 7;          // 屏蔽的发布商/站点
+  NO_BID_REASON_UNMATCHED_USER = 8;             // 用户未匹配
+  NO_BID_REASON_DAILY_READER_CAP = 9;           // 日读者上限
+  NO_BID_REASON_DAILY_DOMAIN_CAP = 10;          // 日域名上限
+}
+
+// FlagBool：通用 0/1 开关字段（test/instl/secure/skip/rwdd 等）。
+enum FlagBool {
+  FLAG_FALSE = 0; // 否 / 关闭 / 生产（视字段而定）
+  FLAG_TRUE = 1;  // 是 / 开启 / 测试（视字段而定）
+}
+
+// Ssai：Imp.ssai 服务端广告插入。
+enum Ssai {
+  SSAI_UNKNOWN = 0;          // 未知
+  SSAI_CLIENT = 1;           // 客户端插入
+  SSAI_SERVER = 2;           // 服务端插入（SSAI）
+  SSAI_MIXED = 3;            // 客户端+服务端混合
+}
+
+// QtySourceType：Qty.sourcetype。
+enum QtySourceType {
+  QTY_SOURCE_MEASUREMENT_VENDOR = 0; // 度量厂商通用方法（CMM 等）
+  QTY_SOURCE_PUBLISHER = 1;          // 发布商/厂商特定方法
+}
+
+// SlotInPod：Video/Audio/Bid.slotinpod（标准非负取值；-1=最后槽见字段注释）。
+enum SlotInPod {
+  SLOT_IN_POD_ANY = 0;                 // 任意槽
+  SLOT_IN_POD_FIRST = 1;               // 仅第一/开头
+  SLOT_IN_POD_FIRST_OR_LAST = 2;       // 第一或最后
+  SLOT_IN_POD_FIRST_MIDDLE_OR_LAST = 3; // 第一/中间/最后均可
+}
+
+// PodSequence：Video/Audio.podseq（标准非负；-1=最后一个 pod 见字段注释）。
+enum PodSequence {
+  POD_SEQUENCE_ANY = 0;    // 任意 pod
+  POD_SEQUENCE_FIRST = 1;  // 第一个 pod
+}
+
+// SourceRelationship：Content.sourcerelationship。
+enum SourceRelationship {
+  SOURCE_RELATIONSHIP_INDIRECT = 0; // 间接
+  SOURCE_RELATIONSHIP_DIRECT = 1;   // 直接
+}
+
+// UserAgentSource：UserAgent.source（SUA 数据来源）。
+enum UserAgentSource {
+  USER_AGENT_SOURCE_UNSPECIFIED = 0;          // 未知/不适用
+  USER_AGENT_SOURCE_CLIENT_HINTS_LOW = 1;     // 仅低熵 Client Hints
+  USER_AGENT_SOURCE_CLIENT_HINTS_HIGH = 2;    // 含高熵 Client Hints
+  USER_AGENT_SOURCE_USER_AGENT_STRING = 3;    // 原始 UA 字符串解析
+}
+
+
+// PodDeduplication：Video.poddedupe（AdCOM List: Pod Deduplication Settings）。可多选。
+enum PodDeduplication {
+  POD_DEDUPE_UNSPECIFIED = 0;   // 未指定（proto 占位；AdCOM 列表从 1 起）
+  POD_DEDUPE_ADOMAIN = 1;       // 按广告主域名（adomain）去重
+  POD_DEDUPE_IAB_CATEGORY = 2;  // 按 IAB Tech Lab Content Taxonomy 类目去重
+  POD_DEDUPE_CREATIVE_ID = 3;   // 按创意 ID 去重
+  POD_DEDUPE_MEDIAFILE_URL = 4; // 按 mediafile URL 去重
+}
+
+// AutoRefreshTrigger：RefSettings.reftype（AdCOM Auto Refresh Triggers）。
+enum AutoRefreshTrigger {
+  AUTO_REFRESH_TRIGGER_UNKNOWN = 0;       // 未知
+  AUTO_REFRESH_TRIGGER_USER_ACTION = 1;   // 用户动作触发刷新
+  AUTO_REFRESH_TRIGGER_EVENT = 2;         // 事件驱动（如内容交互）
+  AUTO_REFRESH_TRIGGER_TIME = 3;          // 按时间间隔自动刷新
+}
+
+// IdMatchMethod：EID.mm（AdCOM List: ID Match Methods）。>=500 厂商自定义。
+enum IdMatchMethod {
+  ID_MATCH_METHOD_UNKNOWN = 0;            // 未知
+  ID_MATCH_METHOD_NO_MATCH = 1;           // 未匹配：直接来自第三方 cookie / IFA
+  ID_MATCH_METHOD_BROWSER_COOKIE_SYNC = 2; // 浏览器 cookie 实时同步
+  ID_MATCH_METHOD_AUTHENTICATED = 3;      // 基于用户认证（邮箱登录/哈希 PII 等）
+  ID_MATCH_METHOD_OBSERVED = 4;           // 基于第一方观测但未认证（GUID/SharedID/Session 等）
+  ID_MATCH_METHOD_INFERENCE = 5;          // 跨浏览器/设备推断（如 IP+UA）
+  // >=500：厂商自定义
+}
+
+// ---------------------------------------------------------------------------
+// BidRequest — Exchange → Bidder 的一次拍卖请求
+// 场景：每次广告位竞价发一单；必填 id + at + cur + 至少一个 Imp；site/app/dooh 三选一推荐。
+// ---------------------------------------------------------------------------
 message BidRequest {
+  // 本场拍卖唯一 ID。必填。BidResponse.id 必须原样回传，用于对账与日志关联。
   string id = 1;
+  // 待售展示机会列表。必填，至少 1 个。一单可多 Imp（多广告位/多形态）。
   repeated Imp imp = 2;
+  // 网站库存。与 app、dooh 互斥。场景：网页/移动 Web 广告位。
   Site site = 3;
+  // 应用库存。与 site、dooh 互斥。场景：iOS/Android App 内广告。
   App app = 4;
+  // 数字户外库存。与 site、app 互斥。场景：DOOH 屏/看板。
   Dooh dooh = 5;
+  // 设备与环境。强烈推荐。场景：定向、反作弊、创意适配（尺寸/OS）。
   Device device = 6;
+  // 用户/受众。推荐。场景：频控、人群定向、同意信号（consent/eids）。
   User user = 7;
+  // 测试模式。取值 FlagBool：0=生产，1=测试。场景：联调；测试流量不得计入计费。
   int32 test = 8;
+  // 拍卖类型。必填。取值 AuctionType：1=一价，2=二价+，3=固定价（仅 Deal）；>=500 Exchange 自定义。
+  // 场景：告诉 DSP 如何理解胜出价格。Schema/构建器拒绝 0（未指定）。
   int32 at = 9;
+  // 超时毫秒（含网络）。场景：DSP 必须在 tmax 内返回，否则 Exchange 当 204。
   int32 tmax = 10;
+  // 白名单 seat。场景：只允许名单内买家席位参竞。
   repeated string wseat = 11;
+  // 黑名单 seat。场景：排除特定买家席位。
   repeated string bseat = 12;
+  // 是否带齐全部 Imp。取值 FlagBool：0=否，1=是。场景：帮助 DSP 做全局预算与互斥决策。
   int32 allimps = 13;
+  // 可接受出价币种（ISO-4217）。必填，至少 1 个。场景：多币种结算；未列出则 DSP 勿用该币种。
   repeated string cur = 14;
+  // 允许的创意语言（ISO-639-1）。场景：语言定向过滤。
   repeated string wlang = 15;
+  // 允许的创意语言（BCP-47）。场景：比 wlang 更细的语言标签。
   repeated string wlangb = 16;
+  // 允许的广告主行业类目。场景：白名单类目库存。
   repeated string acat = 17;
+  // 屏蔽的广告主行业类目。场景：品牌安全/类目黑名单。
   repeated string bcat = 18;
+  // 类目 taxonomy。取值 CategoryTaxonomy：1–7 见枚举；>=500 厂商自定义。场景：解释 cat/bcat/acat。
   int32 cattax = 19;
+  // 屏蔽广告主域名。场景：竞品/敏感域名屏蔽。
   repeated string badv = 20;
+  // 屏蔽应用 bundle/包名。场景：App 流量上屏蔽特定广告主 App。
   repeated string bapp = 21;
+  // 上游来源与供应链。场景：schain 透明化、header bidding 链路审计。
   Source source = 22;
+  // 法规与隐私信号。场景：COPPA/GDPR/CCPA/GPP 合规决策。
   Regs regs = 23;
+  // 扩展：JSON 对象字符串。场景：Exchange 私有字段，双方约定后使用。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Imp — 单个展示机会（广告位）
+// 场景：每个可售位置一条；banner/video/audio/native 至少一种，可同时出现但一标只中一种。
+// ---------------------------------------------------------------------------
 message Imp {
+  // Imp 在本请求内唯一。必填。Bid.impid 必须回填此值。
   string id = 1;
+  // 库存质量/可验证指标。场景：viewability、视频完成率等第三方度量。
   repeated Metric metric = 2;
+  // 展示广告规格。场景：横幅、富媒体、插屏图片等。
   Banner banner = 3;
+  // 视频广告规格。场景：前贴/中贴/后贴、激励视频、CTV pod。
   Video video = 4;
+  // 音频广告规格。场景：播客、电台流、音乐 App。
   Audio audio = 5;
+  // 原生广告规格。场景：信息流卡片；request 内嵌 Native 1.2 JSON。
   Native native = 6;
+  // 私有交易。场景：PDB/PD/Preferred Deal，带 deals[]。
   Pmp pmp = 7;
+  // 广告渲染 SDK/播放器名。场景：识别 Mediation/Player，做兼容定向。
   string displaymanager = 8;
+  // displaymanager 版本。场景：按 SDK 版本灰度或排障。
   string displaymanagerver = 9;
+  // 是否插屏/全屏。取值 FlagBool：0=否，1=是。场景：插屏比价与体验策略。
   int32 instl = 10;
+  // 发布商广告位 ID。场景：按位优化、报表、底价策略。
   string tagid = 11;
+  // CPM 底价。场景：低于此价的出价通常无效。
   double bidfloor = 12;
+  // 底价币种（ISO-4217）。场景：与 bidfloor 成对；默认常 USD。
   string bidfloorcur = 13;
+  // 点击打开方式。取值 FlagBool：0=嵌入 WebView，1=独立浏览器。场景：移动端落地页与归因。
   int32 clickbrowser = 14;
+  // 是否要求 HTTPS。取值 FlagBool：0=否，1=创意与页面须 HTTPS。场景：混合内容拦截环境。
   int32 secure = 15;
+  // 支持的 iframe buster 厂商名。场景：可跳出 iframe 的富媒体。
   repeated string iframebuster = 16;
+  // 是否激励广告。取值 FlagBool：0=否，1=看完发奖。场景：激励视频；与普通贴片区分。
   int32 rwdd = 17;
+  // 服务端广告插入。取值 Ssai：0=未知，1=客户端，2=服务端，3=混合。场景：CTV/直播 SSAI。
   int32 ssai = 18;
+  // 展示过期秒数建议。场景：长时间会话中创意缓存多久失效。
   int32 exp = 19;
+  // 数量乘数。场景：DOOH/成组曝光，用 multiplier 换算计费展示量。
   Qty qty = 20;
+  // 距展示的估计秒数。场景：提前竞价（early auction）时的时间窗。
   double dt = 21;
+  // 自动刷新详情。场景：页内广告位自动轮换。
+  Refresh refresh = 22;
+  // 扩展 JSON 字符串。
   string ext = 99;
 }
 
+// Metric — Imp 附带的可度量指标
+// 场景：Exchange 声明该位的可见度/完成率等，供 DSP 估价。
 message Metric {
+  // 指标类型，如 "viewability"、"completion_rate"。
   string type = 1;
+  // 指标取值，通常 0–1 概率或比率。
   double value = 2;
+  // 度量提供方。场景：IAS、MOAT、发布商自测等。
   string vendor = 3;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Banner — 展示广告
+// 场景：推荐提供 w/h 或 format[]；多尺寸用 format 列表让 DSP 择优。
+// ---------------------------------------------------------------------------
 message Banner {
+  // 可接受尺寸集合。场景：弹性/多尺寸位，优先于单独的 w/h。
   repeated Format format = 1;
+  // 宽度像素。场景：固定尺寸横幅；与 h 成对。
   int32 w = 2;
+  // 高度像素。
   int32 h = 3;
+  // 屏蔽的横幅类型。取值 BannerAdType：1=XHTML文本，2=XHTML Banner，3=JS，4=iframe。
   repeated int32 btype = 4;
+  // 屏蔽的创意属性。取值 CreativeAttribute：1–18 见枚举；>=500 厂商自定义。场景：禁自动播放声等。
   repeated int32 battr = 5;
+  // 广告位置。取值 AdPosition：0=未知，1=首屏上，2=锁定，3=首屏下，4=头，5=脚，6=侧栏，7=全屏。
   int32 pos = 6;
+  // 支持的 MIME。场景：image/jpeg、image/png、text/javascript 等。
   repeated string mimes = 7;
+  // 是否顶层 frame。取值 FlagBool：0=在 iframe 内，1=顶层。场景：是否允许跳出/expand。
   int32 topframe = 8;
+  // 允许扩展方向。取值 ExpandableDirection：1=左，2=右，3=上，4=下，5=全屏，6=缩小。
   repeated int32 expdir = 9;
+  // 支持的 API。取值 ApiFramework：1=VPAID1，2=VPAID2，3=MRAID1，4=ORMMA，5=MRAID2，6=MRAID3，7=OMID，8–9=SIMID；>=500 厂商。
   repeated int32 api = 10;
+  // 同伴广告时区分 Banner 的 ID。场景：视频 companion 多 banner 时关联。
   string id = 11;
+  // 视频伴生模式。取值 VideoCompanionMode：0=与视频同时，1=结束后 end card。
   int32 vcm = 12;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Format — 一种可接受的展示尺寸或比例
+// 场景：响应式位用 wratio/hratio；固定位用 w/h。
 message Format {
-  int32 w = 1;
-  int32 h = 2;
-  int32 wratio = 3;
-  int32 hratio = 4;
-  int32 wmin = 5;
+  int32 w = 1;       // 宽（px）
+  int32 h = 2;       // 高（px）
+  int32 wratio = 3;  // 宽比例；与 hratio 描述纵横比
+  int32 hratio = 4;  // 高比例
+  int32 wmin = 5;    // 最小宽度；弹性布局时的下限
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Video — 视频广告位
+// 场景：必填 mimes；OTT/CTV pod 使用 podid/poddur/slotinpod；激励用 Imp.rwdd。
+// ---------------------------------------------------------------------------
 message Video {
+  // 支持的视频 MIME。必填。场景：video/mp4、video/webm 等。
   repeated string mimes = 1;
+  // 最短时长（秒）。场景：过滤过短素材。
   int32 minduration = 2;
+  // 最长时长（秒）。场景：过滤过长素材。
   int32 maxduration = 3;
+  // 起播延迟（秒）。特殊值：0=前贴，-1=通用中贴，-2=后贴，>0=中贴且延迟该秒数。场景：贴片位置。
   int32 startdelay = 4;
+  // pod 内最大广告条数。场景：CTV ad pod 容量。
   int32 maxseq = 5;
+  // 整个 pod 总时长（秒）。场景：多条广告共享的时间预算。
   int32 poddur = 6;
+  // 支持的视频协议。取值 Protocol：1–3=VAST1–3，4–6=对应 Wrapper，7–8=VAST4，9–10=DAAST，11–16=VAST4.1–4.3及Wrapper。
   repeated int32 protocols = 7;
+  // 播放器宽（px）。
   int32 w = 8;
+  // 播放器高（px）。
   int32 h = 9;
+  // 广告 pod ID。场景：同一动态 pod 内多 Imp 共享，用于编排。
   string podid = 10;
+  // 该 Imp 所属 pod 序号策略。取值 PodSequence：0=任意，1=第一个；特殊 -1=最后一个 pod。
   int32 podseq = 11;
+  // 要求的精确时长列表（秒）。场景：只接受 15s/30s 等标准时长。
   repeated int32 rqddurs = 12;
+  // 视频放置类型（替代旧 placement）。取值 VideoPlcmt：1=Instream，2=伴随内容，3=插屏，4=无内容，5=暂停，6=屏保，7=叠层，8=分屏，9=画面植入。
   int32 plcmt = 13;
+  // 线性模式。取值 VideoLinearity：1=线性贴片，2=非线性/Overlay。
   int32 linearity = 14;
+  // 是否可跳过。取值 FlagBool：0=不可跳，1=可跳。场景：可跳过前贴 vs 不可跳。
   int32 skip = 15;
+  // 允许跳过前的最少视频秒数。
   int32 skipmin = 16;
+  // 出现跳过按钮前的秒数。
   int32 skipafter = 17;
+  // pod 内槽位。取值 SlotInPod：0=任意，1=第一，2=第一或最后，3=第一/中/最后；特殊 -1=最后槽。场景：包段选槽。
   int32 slotinpod = 18;
+  // 每秒最低 CPM。场景：按时长计价的底价约束。
   double mincpmpersec = 19;
+  // 屏蔽的创意属性。取值 CreativeAttribute：1–18 见枚举；>=500 厂商自定义。
   repeated int32 battr = 20;
+  // 允许超出 maxduration 的最大秒数；-1 表示不限。
   int32 maxextended = 21;
+  // 最低码率（Kbps）。
   int32 minbitrate = 22;
+  // 最高码率（Kbps）。
   int32 maxbitrate = 23;
+  // 是否允许 letterboxing。取值 FlagBool：0=否，1=是。场景：画幅不匹配时黑边。
   int32 boxingallowed = 24;
+  // 播放方式。取值 PlaybackMethod：1=加载有声，2=加载静音，3=点击有声，4=悬停有声，5=入视口有声，6=入视口静音，7=连续播。
   repeated int32 playbackmethod = 25;
+  // 播放终止方式。取值 PlaybackCessationMode：1=播完/用户停，2=离视口/用户停，3=离视口后悬浮至播完。
   int32 playbackend = 26;
+  // 传输方式。取值 DeliveryMethod：1=流式，2=渐进，3=下载。
   repeated int32 delivery = 27;
+  // 广告位置。取值 AdPosition（同 Banner.pos）。
   int32 pos = 28;
+  // 伴生 Banner 规格。场景：视频旁/下方 companion。
   repeated Banner companionad = 29;
+  // 支持的 API。取值 ApiFramework（见枚举）。
   repeated int32 api = 30;
+  // 伴生广告类型。取值 CompanionType：1=Static，2=HTML，3=iframe。
   repeated int32 companiontype = 31;
+  // 已弃用的 placement；请用 plcmt（OpenRTB 2.6-202303+）。
+  int32 placement = 32;
+  // Pod 去重策略（OpenRTB 2.6-202402+）。取值见 AdCOM Pod Deduplication。
+  // Pod 去重策略（OpenRTB 2.6-202402+）。取值 PodDeduplication：1=按 adomain，2=按 IAB Content Taxonomy，3=按创意 ID，4=按 mediafile URL；可多选。
+  repeated int32 poddedupe = 33;
+  // 按时长分段底价。
+  // 按时长分段底价。场景：15s/30s 等不同时长档使用不同 CPM 底价。
+  repeated DurFloors durfloors = 34;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Audio — 音频广告位
+// 场景：必填 mimes；播客/电台流；可与 companionad 一起做可视化伴生。
+// ---------------------------------------------------------------------------
 message Audio {
+  // 支持的音频 MIME。必填。
   repeated string mimes = 1;
-  int32 minduration = 2;
-  int32 maxduration = 3;
-  int32 poddur = 4;
+  int32 minduration = 2;       // 最短秒数
+  int32 maxduration = 3;       // 最长秒数
+  int32 poddur = 4;            // pod 总时长
+  // 音频协议。取值 Protocol（含 DAAST 9/10、VAST 等，见枚举）。
   repeated int32 protocols = 5;
+  // 起播延迟。同 Video：0=前贴，-1=中贴，-2=后贴，>0=中贴延迟秒数。
   int32 startdelay = 6;
-  repeated int32 rqddurs = 7;
-  string podid = 8;
+  repeated int32 rqddurs = 7;  // 要求的精确时长
+  string podid = 8;            // 音频 pod ID
+  // pod 序号。取值 PodSequence：0=任意，1=第一；特殊 -1=最后 pod。
   int32 podseq = 9;
+  // pod 槽位。取值 SlotInPod；特殊 -1=最后槽。
   int32 slotinpod = 10;
+  // 每秒最低 CPM。场景：按时长计价的底价约束。
   double mincpmpersec = 11;
+  // 屏蔽创意属性。取值 CreativeAttribute。
   repeated int32 battr = 12;
+  // 允许超出 maxduration 的最大秒数；-1 表示不限。
   int32 maxextended = 13;
+  // 最低码率（Kbps）。
   int32 minbitrate = 14;
+  // 最高码率（Kbps）。
   int32 maxbitrate = 15;
+  // 传输方式。取值 DeliveryMethod：1=流式，2=渐进，3=下载。
   repeated int32 delivery = 16;
-  repeated Banner companionad = 17;
+  repeated Banner companionad = 17; // 可视化伴生
+  // 支持的 API。取值 ApiFramework。
   repeated int32 api = 18;
+  // 伴生类型。取值 CompanionType：1=Static，2=HTML，3=iframe。
   repeated int32 companiontype = 19;
-  int32 maxseq = 20;
+  int32 maxseq = 20;   // pod 内最大广告数
+  // 音频流类型。取值 FeedType：1=音乐服务，2=FM/AM，3=播客。
   int32 feed = 21;
+  // 是否已与内容缝合。取值 FlagBool：0=否，1=是。
   int32 stitched = 22;
+  // 音量归一。取值 VolumeNormalizationMode：0=无，1=平均，2=峰值，3=响度，4=自定义。
   int32 nvol = 23;
+  // 按时长分段底价。
+  repeated DurFloors durfloors = 24;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Native — 原生广告
+// 场景：信息流；request 为 Native Markup Request JSON 字符串（见 native.schema.json）。
+// ---------------------------------------------------------------------------
 message Native {
+  // Native 请求体（JSON 字符串）。必填。内含 assets[] 等；需按 Native 1.2 校验。
   string request = 1;
+  // Native 规范版本，如 "1.2"。场景：告诉 DSP 解析哪一版 markup。
   string ver = 2;
+  // 支持的 API。取值 ApiFramework（见枚举）。
   repeated int32 api = 3;
+  // 屏蔽的创意属性。取值 CreativeAttribute（见枚举）。
   repeated int32 battr = 4;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Pmp / Deal — 私有市场
+// 场景：非公开竞价；private_auction=1 时通常仅 deals 内席位可参与。
+// ---------------------------------------------------------------------------
 message Pmp {
+  // 是否仅私有拍卖。取值 FlagBool：0=可对公开市场，1=仅私有。场景：PDB 封闭交易。
   int32 private_auction = 1;
+  // 可用成交条件列表。场景：一条 Imp 挂多个 Deal 供 DSP 选择。
   repeated Deal deals = 2;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Deal — 私有成交条件
+// 场景：PMP/PDB；必填 id；at=3 表示固定价 Deal。
 message Deal {
+  // Deal ID。必填。Bid.dealid 赢价时回填。
   string id = 1;
+  // 该 Deal 底价（CPM）。
   double bidfloor = 2;
+  // 底价币种。
   string bidfloorcur = 3;
+  // 该 Deal 拍卖类型。取值 AuctionType：1=一价，2=二价+，3=固定价；>=500 自定义。场景：覆盖 BidRequest.at。
   int32 at = 4;
+  // 允许的买家 seat 白名单。
   repeated string wseat = 5;
+  // 允许的广告主域名白名单。
   repeated string wadomain = 6;
+  // 是否保量。取值 FlagBool：0=否，1=保量 Deal。场景：程序化合约保量。
   int32 guar = 7;
+  // 每秒最低 CPM（视频按时长）。
   double mincpmpersec = 8;
+  // 按时长分段底价（视频/音频 deal）。
+  repeated DurFloors durfloors = 9;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Qty — 展示数量换算
+// 场景：DOOH 一次曝光对应多人/多次；用 multiplier 折算计费展示。
 message Qty {
+  // 数量乘数（相对 1 次标准展示）。
   double multiplier = 1;
+  // 乘数来源。取值 QtySourceType：0=度量厂商方法，1=发布商/厂商特定方法。
   int32 sourcetype = 2;
+  // 提供乘数的厂商。
   string vendor = 3;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// DurFloors — 按时长区间的底价（Video/Audio/Deal.durfloors）
+// 场景：不同素材时长档使用不同 CPM 底价；区间由 mindur/maxdur 界定。
+message DurFloors {
+  int32 mindur = 1;           // 区间最短秒数（含）
+  int32 maxdur = 2;           // 区间最长秒数（含）；可省略表示无上界
+  double bidfloor = 3;        // 该时长区间 CPM 底价
+  string bidfloorcur = 4;     // 底价币种 ISO-4217
+  // 扩展：JSON 对象字符串。
+  string ext = 99;
+}
+
+// ---------------------------------------------------------------------------
+// Refresh — Imp.refresh 自动刷新
+// 场景：页内广告位自动轮换；count 为自上次整页加载后的刷新次数。
+// ---------------------------------------------------------------------------
+message Refresh {
+  repeated RefSettings refsettings = 1; // 刷新触发与间隔
+  int32 count = 2;                      // 自上次整页加载以来已刷新次数
+  // 扩展：JSON 对象字符串。
+  string ext = 99;
+}
+
+// RefSettings — 单条自动刷新规则
+// 场景：声明触发类型与最小间隔，避免过度刷新。
+message RefSettings {
+  // 自动刷新触发类型。取值 AutoRefreshTrigger：0=未知，1=用户动作，2=事件驱动，3=按时间间隔。
+  int32 reftype = 1;
+  // 最小刷新间隔（秒）。场景：限制刷新频率。
+  int32 minint = 2;
+  // 扩展：JSON 对象字符串。
+  string ext = 99;
+}
+
+// ---------------------------------------------------------------------------
+// Site / App / Dooh — 库存载体（三选一）
+// ---------------------------------------------------------------------------
+
+// Site：网页库存。场景：品牌站点、资讯站、移动 Web。
 message Site {
-  string id = 1;
-  string name = 2;
-  string domain = 3;
-  int32 cattax = 4;
-  repeated string cat = 5;
-  repeated string sectioncat = 6;
-  repeated string pagecat = 7;
-  string page = 8;
-  string ref = 9;
-  string search = 10;
-  int32 mobile = 11;
-  int32 privacypolicy = 12;
-  Publisher publisher = 13;
-  Content content = 14;
-  string keywords = 15;
-  repeated string kwarray = 16;
-  string inventorypartnerdomain = 17;
+  string id = 1;                 // Exchange 侧站点 ID
+  string name = 2;               // 站点名（可展示名）
+  string domain = 3;             // 主域，如 example.com；品牌安全与屏蔽
+  int32 cattax = 4;              // 类目 taxonomy。取值 CategoryTaxonomy（见枚举）
+  repeated string cat = 5;       // 站点类目
+  repeated string sectioncat = 6; // 栏目类目
+  repeated string pagecat = 7;   // 当前页类目
+  string page = 8;               // 完整页面 URL；上下文定向
+  string ref = 9;                // Referrer URL
+  string search = 10;            // 搜索词（若来自搜索结果页）
+  int32 mobile = 11;             // 是否移动优化站。取值 FlagBool：0=否，1=是
+  int32 privacypolicy = 12;      // 是否有隐私政策。取值 FlagBool：0=否，1=是
+  Publisher publisher = 13;      // 发布商
+  Content content = 14;          // 页内内容元数据
+  string keywords = 15;          // 逗号分隔关键词（兼容旧字段）
+  repeated string kwarray = 16;  // 关键词数组（推荐）
+  string inventorypartnerdomain = 17; // ads.txt/库存合作域
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// App：应用库存。场景：iOS/Android 游戏与工具 App。
 message App {
-  string id = 1;
-  string name = 2;
-  string bundle = 3;
-  string domain = 4;
-  string storeurl = 5;
-  int32 cattax = 6;
+  string id = 1;                 // Exchange 侧 App ID
+  string name = 2;               // 应用名
+  string bundle = 3;             // 包名/Bundle ID；应用定向与屏蔽核心字段
+  string domain = 4;             // 应用关联域
+  string storeurl = 5;           // 应用商店详情 URL
+  int32 cattax = 6;              // 类目 taxonomy。取值 CategoryTaxonomy
+  // 应用类目。场景：行业定向；taxonomy 见 cattax。
   repeated string cat = 7;
+  // 栏目/分区类目。
   repeated string sectioncat = 8;
+  // 当前视图/页面类目。
   repeated string pagecat = 9;
-  string ver = 10;
-  int32 privacypolicy = 11;
-  int32 paid = 12;
+  string ver = 10;               // 应用版本
+  int32 privacypolicy = 11;      // 是否有隐私政策。取值 FlagBool
+  int32 paid = 12;               // 是否付费应用。取值 FlagBool：0=免费，1=付费
+  // 发布商。场景：应用归属的发行商主体。
   Publisher publisher = 13;
+  // 应用内内容元数据。场景：内嵌播放器/文章上下文。
   Content content = 14;
+  // 逗号分隔关键词（兼容旧字段）。
   string keywords = 15;
+  // 关键词数组（推荐）。
   repeated string kwarray = 16;
+  // 库存合作域（app-ads.txt 合作方）。
   string inventorypartnerdomain = 17;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Dooh：数字户外。场景：电梯屏、看板、商场联屏。
 message Dooh {
-  string id = 1;
+  string id = 1;                 // 屏点/单元 ID
+  // 屏点/单元名称。
   string name = 2;
-  int32 venue = 3;
-  int32 fixed = 4;
+  int32 venue = 3;               // 旧版数值场所类型；优先用 venuetype + venuetypetax
+  int32 fixed = 4;               // 是否固定屏。取值 FlagBool：0=可移动，1=固定
+  // 发布商/屏网运营商。
   Publisher publisher = 5;
+  // 关联业务域。
   string domain = 6;
+  // 逗号分隔关键词（兼容旧字段）。
   string keywords = 7;
+  // 关键词数组（推荐）。
   repeated string kwarray = 8;
-  Content content = 9;
+  Content content = 9;           // 当前播放的内容上下文
+  // 场所类型 ID 列表（OpenOOH 等）；taxonomy 由 venuetypetax 指定。
+  repeated string venuetype = 10;
+  // 场所 taxonomy。AdCOM DOOH Venue Taxonomies；默认 1。
+  int32 venuetypetax = 11;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Publisher — 发布商
+// 场景：合约主体、品牌安全与报表维度。
 message Publisher {
-  string id = 1;
+  string id = 1;            // 发布商 ID；报表与合约主体
+  // 发布商名称。
   string name = 2;
-  int32 cattax = 3;
-  repeated string cat = 4;
-  string domain = 5;
+  int32 cattax = 3;         // 类目 taxonomy。取值 CategoryTaxonomy
+  repeated string cat = 4;  // 发布商类目
+  string domain = 5;        // 发布商主域
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Producer — 内容出品方/制片方
+// 场景：剧集/节目内容的制作方，辅助上下文定向。
 message Producer {
-  string id = 1;
+  string id = 1;            // 内容制片方/出品方
+  // 出品方名称。
   string name = 2;
-  int32 cattax = 3;
+  int32 cattax = 3;         // 类目 taxonomy。取值 CategoryTaxonomy
+  // 出品方类目；taxonomy 见 cattax。
   repeated string cat = 4;
+  // 出品方主域。
   string domain = 5;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Content — 与广告一起出现的媒体内容
+// 场景：视频前后贴依赖剧集/频道信息做上下文定向与品牌安全。
 message Content {
+  // 内容 ID。场景：剧集/文章唯一标识，用于上下文定向。
   string id = 1;
-  int32 episode = 2;
-  string title = 3;
-  string series = 4;
-  string season = 5;
-  string artist = 6;
-  string genre = 7;
+  int32 episode = 2;             // 集数
+  string title = 3;              // 标题
+  string series = 4;             // 系列名
+  string season = 5;             // 季
+  string artist = 6;             // 艺术家（音频/音乐）
+  string genre = 7;              // 自由文本类型（旧字段）；有 taxonomy 时优先 genres+gtax
+  // 专辑名（音频/音乐）。
   string album = 8;
-  string isrc = 9;
+  string isrc = 9;               // 录音制品国际标准码
+  // 内容出品方。
   Producer producer = 10;
-  string url = 11;
-  int32 cattax = 12;
+  string url = 11;               // 内容 URL
+  int32 cattax = 12;             // 类目 taxonomy。取值 CategoryTaxonomy
+  // 内容类目；taxonomy 见 cattax。
   repeated string cat = 13;
-  int32 prodq = 14;
-  int32 context = 15;
-  string contentrating = 16;
-  string userrating = 17;
-  int32 qagmediarating = 18;
+  int32 prodq = 14;              // 制作质量。取值 ProductionQuality：0=未知，1=专业，2=准专业，3=UGC
+  int32 context = 15;            // 内容上下文。取值 ContentContext：1=视频，2=游戏，3=音乐，4=应用，5=文本，6=其他，7=未知
+  string contentrating = 16;     // 内容分级，如 MPAA
+  string userrating = 17;        // 用户评分
+  int32 qagmediarating = 18;     // 媒体评级。取值 MediaRating：1=全年龄，2=12+，3=成人
+  // 逗号分隔关键词（兼容旧字段）。
   string keywords = 19;
+  // 关键词数组（推荐）。
   repeated string kwarray = 20;
+  // 播出方式（OpenRTB 2.6-202606）：0=非排期（VOD/用户发起），1=排期/线性；≠ realtime。
   int32 livestream = 21;
-  int32 sourcerelationship = 22;
-  int32 len = 23;
-  string language = 24;
-  string langb = 25;
-  int32 embeddable = 26;
-  repeated Data data = 27;
-  Network network = 28;
-  Channel channel = 29;
+  int32 sourcerelationship = 22; // 与发布商关系。取值 SourceRelationship：0=间接，1=直接
+  int32 len = 23;                // 内容时长秒数
+  string language = 24;          // ISO-639-1
+  string langb = 25;             // BCP-47
+  int32 embeddable = 26;         // 是否可嵌入。取值 FlagBool：0=否，1=是
+  repeated Data data = 27;       // 内容侧分段数据
+  Network network = 28;          // 播出网络
+  Channel channel = 29;          // 频道
+  // 类型 taxonomy（OpenRTB 2.6-202501+）；缺省按 IAB 指南可视为 Content Taxonomy 3.1。
+  // 类型 taxonomy（OpenRTB 2.6-202501+）。解释 genres[]；缺省可按 IAB Content Taxonomy 约定。
+  int32 gtax = 30;
+  // 类型 ID 列表，taxonomy 由 gtax 定义（OpenRTB 2.6-202501+）。
+  repeated string genres = 31;
+  // 是否实时发生（OpenRTB 2.6-202606）：0=非实时（如回放），1=实时（如直播赛事）。
+  int32 realtime = 32;
+  // 是否首播（OpenRTB 2.6-202606）：0=非首次，1=首次对观众播出。
+  int32 firstbroadcast = 33;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Network — 播出网络
+// 场景：CTV/OTT 频道所属网络（如流媒体平台品牌）。
 message Network {
+  // 网络 ID。
   string id = 1;
+  // 网络名称。
   string name = 2;
+  // 网络主域。
   string domain = 3;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Channel — 频道
+// 场景：线性/流媒体具体频道名与域。
 message Channel {
+  // 频道 ID。
   string id = 1;
+  // 频道名称。
   string name = 2;
+  // 频道主域。
   string domain = 3;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Device — 设备与网络环境
+// 场景：几乎所有流量都应带；用于定向、创意适配、反作弊与合规（dnt/lmt）。
+// ---------------------------------------------------------------------------
 message Device {
-  Geo geo = 1;
-  int32 dnt = 2;
-  int32 lmt = 3;
-  string ua = 4;
-  UserAgent sua = 5;
-  string ip = 6;
-  string ipv6 = 7;
+  Geo geo = 1;                   // 设备地理位置（可与 User.geo 不同）
+  int32 dnt = 2;                 // Do Not Track。取值 FlagBool：0=否，1=开启 DNT
+  int32 lmt = 3;                 // 限制广告跟踪（LAT）。取值 FlagBool：0=否，1=限制
+  string ua = 4;                 // User-Agent 原始串；解析失败时的兜底
+  UserAgent sua = 5;             // 结构化 UA（SUA）；优先于 ua 做精准定向
+  string ip = 6;                 // IPv4；地理与风控
+  string ipv6 = 7;               // IPv6
+  // 设备类型。取值 DeviceType：1=通用移动，2=PC，3=CTV，4=手机，5=平板，6=联网设备，7=机顶盒，8=OOH
   int32 devicetype = 8;
-  string make = 9;
-  string model = 10;
-  string os = 11;
-  string osv = 12;
-  string hwv = 13;
-  int32 h = 14;
-  int32 w = 15;
-  int32 ppi = 16;
-  double pxratio = 17;
-  int32 js = 18;
-  int32 geofetch = 19;
-  string language = 20;
-  string langb = 21;
-  string carrier = 22;
-  string mccmnc = 23;
+  string make = 9;               // 厂商，如 Apple
+  string model = 10;             // 型号
+  string os = 11;                // 操作系统
+  string osv = 12;               // OS 版本
+  string hwv = 13;               // 硬件版本
+  int32 h = 14;                  // 屏幕高 px
+  int32 w = 15;                  // 屏幕宽 px
+  int32 ppi = 16;                // 像素密度
+  double pxratio = 17;           // 物理像素比（Retina 等）
+  int32 js = 18;                 // 是否支持 JS。取值 FlagBool：0=否，1=是
+  int32 geofetch = 19;           // 是否允许创意再取地理。取值 FlagBool：0=否，1=是
+  string language = 20;          // 设备语言 ISO-639-1
+  string langb = 21;             // BCP-47
+  string carrier = 22;           // 运营商
+  string mccmnc = 23;            // MCC-MNC
+  // 连接类型。取值 ConnectionType：0=未知，1=以太网，2=WiFi，3=蜂窝未知，4=2G，5=3G，6=4G，7=5G
   int32 connectiontype = 24;
-  string ifa = 25;
+  string ifa = 25;               // 广告 ID（IDFA/GAID 等）；用户级定向与归因
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// UserAgent — 结构化 User-Agent（SUA）
+// 场景：UA-CH / 解析后的浏览器与平台信息，比原始 ua 更稳定。
 message UserAgent {
-  repeated BrandVersion browsers = 1;
-  BrandVersion platform = 2;
-  int32 mobile = 3;
-  string architecture = 4;
-  string bitness = 5;
-  string model = 6;
+  repeated BrandVersion browsers = 1; // 浏览器品牌版本列表
+  BrandVersion platform = 2;          // 平台（OS）品牌版本
+  int32 mobile = 3;                   // 是否移动。取值 FlagBool：0=否，1=是
+  string architecture = 4;            // CPU 架构
+  string bitness = 5;                 // 位数，如 "64"
+  string model = 6;                   // 设备型号（SUA）
+  // SUA 来源。取值 UserAgentSource：0=未知，1=低熵 CH，2=高熵 CH，3=UA 字符串解析
   int32 source = 7;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// BrandVersion — SUA 中的品牌与版本分量
+// 场景：browsers[] / platform 的 brand+version 结构。
 message BrandVersion {
-  string brand = 1;
-  repeated string version = 2;
+  string brand = 1;              // 品牌名，如 "Chrome"
+  repeated string version = 2;   // 版本分量，如 ["192","0","0","0"]
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Geo — 地理
+// 场景：国家/城市定向、本地推、合规区域判断；type 说明坐标来源可信度。
 message Geo {
-  double lat = 1;
-  double lon = 2;
-  int32 type = 3;
-  int32 accuracy = 4;
-  int32 lastfix = 5;
-  int32 ipservice = 6;
-  string country = 7;
-  string region = 8;
-  string metro = 9;
+  double lat = 1;        // 纬度
+  double lon = 2;        // 经度
+  int32 type = 3;        // 坐标来源。取值 LocationType：1=GPS，2=IP，3=用户提供
+  int32 accuracy = 4;    // 精度（米）
+  int32 lastfix = 5;    // 坐标年龄（秒）
+  int32 ipservice = 6;   // IP 地理库。取值 IpLocationService：1=ip2location，2=Neustar，3=MaxMind，4=NetAcuity
+  string country = 7;    // ISO-3166-1 Alpha-3 等约定国家码
+  string region = 8;     // 省/州
+  string metro = 9;      // 都市圈码
+  // 城市名。场景：城市级定向。
   string city = 10;
-  string zip = 11;
-  int32 utcoffset = 12;
+  string zip = 11;       // 邮编
+  int32 utcoffset = 12;  // 相对 UTC 的分钟偏移
+  string regionfips104 = 13; // FIPS 10-4 地区码（若适用）
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// User — 受众
+// 场景：跨请求频控、人群包、同意与统一 ID（eids）。
+// ---------------------------------------------------------------------------
 message User {
-  string id = 1;
-  string buyeruid = 2;
-  string keywords = 3;
-  repeated string kwarray = 4;
-  string customdata = 5;
-  Geo geo = 6;
-  repeated Data data = 7;
-  string consent = 8;
-  repeated EID eids = 9;
+  string id = 1;                 // Exchange 侧用户 ID
+  string buyeruid = 2;           // 该买家 cookie/映射 ID；DSP 频控关键
+  string keywords = 3;           // 旧版逗号关键词
+  repeated string kwarray = 4;   // 兴趣/上下文关键词
+  string customdata = 5;         // Exchange 回传的买家自定义串
+  Geo geo = 6;                   // 用户常住/注册地（可与 Device.geo 不同）
+  repeated Data data = 7;        // 人群/第一方数据分段
+  string consent = 8;            // GDPR TCF 同意串等
+  repeated EID eids = 9;         // 扩展/统一身份（UID2、Living Docs 等）
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Data — 数据提供方及其分段
 message Data {
+  // 数据提供方 ID。
   string id = 1;
-  string name = 2;
-  repeated string cids = 3;
-  repeated Segment segment = 4;
+  string name = 2;               // 数据源名称
+  repeated string cids = 3;      // 相关活动/客户 ID
+  repeated Segment segment = 4;  // 具体分群
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// Segment — 数据分群
+// 场景：人群包、兴趣段；id/name/value 由数据提供方定义。
 message Segment {
-  string id = 1;
+  string id = 1;     // 分群 ID
+  // 分群名称。
   string name = 2;
-  string value = 3;
+  string value = 3;  // 分群取值
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// EID — Extended Identifier
+// 场景：cookie 退化后的跨域身份；source 标识 ID 体系。
 message EID {
-  string source = 1;
-  repeated UID uids = 2;
-  string inserter = 3;
-  string matcher = 4;
+  string source = 1;       // ID 来源域或体系，如 uidapi.com
+  repeated UID uids = 2;   // 具体 ID 值列表
+  string inserter = 3;     // 写入方
+  string matcher = 4;      // 匹配方
+  // 匹配方法。取值 IdMatchMethod：0=未知，1=未匹配（直接 cookie/IFA），2=浏览器 cookie sync，3=认证匹配，4=第一方观测，5=推断；>=500 厂商自定义。
   int32 mm = 5;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// UID — Extended ID 的具体取值
+// 场景：EID.uids[]；atype 说明 ID 作用层级。
 message UID {
-  string id = 1;
-  int32 atype = 2;
+  string id = 1;     // 用户标识值
+  int32 atype = 2;   // agent 类型。取值 AgentType：1=浏览器/设备，2=App 内，3=跨设备人物；>=500 厂商
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Source / SupplyChain — 流量来源与转售链
+// 场景：header bidding、SSP 转售；schain 用于 ads.txt/sellers.json 透明化。
+// ---------------------------------------------------------------------------
 message Source {
-  int32 fd = 1;
-  string tid = 2;
-  string pchain = 3;
-  SupplyChain schain = 4;
+  int32 fd = 1;              // 最终决策是否在上游。取值 FlagBool：0=本 Exchange 决策，1=上游最终决策
+  string tid = 2;            // 事务 ID；链路追踪
+  string pchain = 3;         // 支付 ID 链（旧字段，优先 schain）
+  SupplyChain schain = 4;    // SupplyChain 对象
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// SupplyChain — 供应链对象（schain）
+// 场景：完整转售路径；complete=1 表示链路未截断。
 message SupplyChain {
-  int32 complete = 1;
-  repeated SupplyChainNode nodes = 2;
-  string ver = 3;
+  int32 complete = 1;                 // 链路是否完整。取值 FlagBool：0=可能截断，1=完整
+  repeated SupplyChainNode nodes = 2; // 从源头到当前的转售节点，按序
+  string ver = 3;                     // schain 版本，如 "1.0"
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// SupplyChainNode — 供应链上的一个节点
+// 场景：asi+sid 对应 sellers.json；hp 标识是否参与支付。
 message SupplyChainNode {
-  string asi = 1;
-  string sid = 2;
-  string rid = 3;
-  string name = 4;
-  string domain = 5;
-  int32 hp = 6;
+  string asi = 1;      // 广告系统标识域（Advertising System Identifier）
+  string sid = 2;      // 该系统上的卖家 ID
+  string rid = 3;      // 该节点请求 ID
+  string name = 4;     // 组织名（可选）
+  string domain = 5;   // 业务域（可选）
+  int32 hp = 6;        // 是否参与支付路径。取值 FlagBool：0=否，1=是（helps payment）
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Regs — 法规
+// 场景：儿童流量、欧盟同意、美国州隐私、全球 GPP 字符串。
+// ---------------------------------------------------------------------------
 message Regs {
-  int32 coppa = 1;
-  int32 gdpr = 2;
-  string us_privacy = 3;
-  string gpp = 4;
-  repeated int32 gpp_sid = 5;
+  int32 coppa = 1;              // 是否适用 COPPA。取值 FlagBool：0=否，1=儿童流量适用
+  int32 gdpr = 2;               // 是否适用 GDPR。取值 FlagBool：0=否，1=适用
+  string us_privacy = 3;        // CCPA/US Privacy 字符串
+  string gpp = 4;               // Global Privacy Platform 串
+  repeated int32 gpp_sid = 5;   // GPP 区段 ID 列表
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// BidResponse — Bidder → Exchange
+// 场景：200+seatbid=出价；200+nbr=结构化不竞价；也可 HTTP 204 无 body。
+// ---------------------------------------------------------------------------
 message BidResponse {
+  // 必须等于 BidRequest.id。必填。
   string id = 1;
+  // 席位出价集合。真正出价时至少 1 个 SeatBid。
   repeated SeatBid seatbid = 2;
+  // Bidder 生成的响应 ID。场景：Bidder 侧日志与对账。
   string bidid = 3;
+  // 本响应出价币种（ISO-4217）。必填。构建器默认 USD。须落在请求 cur 允许集合内。
   string cur = 4;
+  // 回传给 Exchange、之后可能再塞进 User.customdata 的不透明串。
   string customdata = 5;
+  // 不竞价原因。取值 NoBidReason：0=未知错误，1=技术错误，2=非法请求，3=爬虫，4=非人，5=云/代理IP，6=不支持设备，7=屏蔽发布商，8=用户未匹配，9=日读者上限，10=日域名上限；>=500 自定义。
   int32 nbr = 6;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// SeatBid — 某一买家席位下的一组 Bid
 message SeatBid {
+  // 该 seat 的出价列表。至少 1 条才有意义。
   repeated Bid bid = 1;
+  // 买家席位名。场景：同一 DSP 多 seat 时报价与结算区分。
   string seat = 2;
+  // 是否打包整组。取值 FlagBool：0=可部分赢，1=组内须全赢。场景：多 Imp 打包售卖。
   int32 group = 3;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
 
+// ---------------------------------------------------------------------------
+// Bid — 单条出价
+// 场景：必填 id/impid/price；推荐 adm、adomain、crid；Deal 出价填 dealid；
+// 多形态 Imp 填 mtype。
+// ---------------------------------------------------------------------------
 message Bid {
+  // Bidder 侧出价 ID。必填。
   string id = 1;
+  // 对应 Imp.id。必填。对不上则 Exchange 丢弃。
   string impid = 2;
+  // CPM 出价，必须 > 0。必填。币种见 BidResponse.cur。
   double price = 3;
+  // 赢价通知 URL（可含 ${AUCTION_PRICE}）。场景：胜出后 Exchange 服务端调用。
   string nurl = 4;
+  // 计费通知 URL。场景：实际计费时点回调（可与展示分离）。
   string burl = 5;
+  // 丢单通知 URL。场景：未胜出时的反馈学习。
   string lurl = 6;
+  // 广告 markup（HTML/VAST/Native JSON 等）。强烈推荐内联；也可靠 nurl 拉取。
   string adm = 7;
+  // 广告 ID（广告主侧）。场景：广告维度报表。
   string adid = 8;
+  // 广告主域名列表。强烈推荐。场景：badv 屏蔽检查与品牌披露。
   repeated string adomain = 9;
+  // 推广应用 bundle。场景：App 安装类广告。
   string bundle = 10;
+  // 抽样创意预览图 URL。场景：审核与质检。
   string iurl = 11;
+  // 活动 ID。
   string cid = 12;
+  // 创意 ID。强烈推荐。场景：创意审核、频控、拒登排查。
   string crid = 13;
+  // 策略战术 ID。场景：DSP 内部策略归因。
   string tactic = 14;
+  // 类目 taxonomy。取值 CategoryTaxonomy（见枚举）。
   int32 cattax = 15;
+  // 创意/广告主类目。
   repeated string cat = 16;
+  // 创意属性。取值 CreativeAttribute（见枚举）；>=500 厂商。
   repeated int32 attr = 17;
+  // 创意使用的 API。取值 ApiFramework（见枚举）。
   repeated int32 apis = 18;
+  // 视频协议。取值 Protocol（见枚举）。
   int32 protocol = 19;
+  // 媒体评级。取值 MediaRating：1=全年龄，2=12+，3=成人。
   int32 qagmediarating = 20;
+  // 创意语言 ISO-639-1。
   string language = 21;
+  // 创意语言 BCP-47。
   string langb = 22;
+  // 成交的 Deal.id。走 PMP 时必填对应 deal。
   string dealid = 23;
+  // 实际创意宽。
   int32 w = 24;
+  // 实际创意高。
   int32 h = 25;
+  // 创意宽比（原生/弹性）。
   int32 wratio = 26;
+  // 创意高比。
   int32 hratio = 27;
+  // 该出价建议的过期秒数。
   int32 exp = 28;
+  // 视频/音频时长秒数。
   int32 dur = 29;
+  // 素材形态。多形态 Imp 时强烈推荐，避免歧义。
+  // 素材形态。取值 MarkupType：1=Banner，2=Video，3=Audio，4=Native。多形态 Imp 时强烈推荐，避免歧义。
   MarkupType mtype = 30;
+  // 声明占用的 pod 槽位。取值 SlotInPod；特殊 -1=最后槽。场景：CTV pod 选槽出价。
   int32 slotinpod = 31;
+  // 扩展：JSON 对象字符串。
   string ext = 99;
 }
