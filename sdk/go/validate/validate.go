@@ -79,13 +79,13 @@ func initSchemas() {
 	})
 }
 
-// ValidateBidRequest validates BidRequest JSON bytes.
+// ValidateBidRequest 校验 BidRequest JSON 字节。
 func ValidateBidRequest(data []byte) ValidationResult {
 	initSchemas()
 	return validateKind(data, requestSch, true)
 }
 
-// ValidateBidResponse validates BidResponse JSON bytes.
+// ValidateBidResponse 校验 BidResponse JSON 字节。
 func ValidateBidResponse(data []byte) ValidationResult {
 	initSchemas()
 	return validateKind(data, responseSch, false)

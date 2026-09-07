@@ -1,6 +1,6 @@
-//! Fluent builders that emit OpenRTB JSON (`serde_json::Value`) and validate via schema.
+//! 流式 Builder：输出 OpenRTB JSON（[`serde_json::Value`]），并可经 JSON Schema 校验。
 //!
-//! Prefer `build_validated()` so structural helpers + JSON Schema agree before send.
+//! 推荐在发送前调用 `build_validated()`，使 Builder 结构检查与 Schema 一致。
 
 mod request;
 mod response;

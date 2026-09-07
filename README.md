@@ -14,7 +14,7 @@ https://github.com/oakrtb/openrtb
 | JSON 对象 | BidRequest / BidResponse 及全部子对象 | [schema/jsonschema](schema/jsonschema)、[docs/objects.md](docs/objects.md) |
 | Native | `imp.native.request` 内嵌的 Native 1.2 | [schema/jsonschema/native.schema.json](schema/jsonschema/native.schema.json) |
 | 二进制 | 与 JSON 字段同名的 protobuf | [proto/oakrtb/v2/openrtb.proto](proto/oakrtb/v2/openrtb.proto) |
-| SDK | Go / Java / Rust 模型 + 构建器 + `ValidationResult` | [docs/sdk.md](docs/sdk.md)、[sdk/](sdk/) |
+| SDK | Go / Java / Rust 模型 + 构建器 + inspect 读模型 + fit 契合检查 + `ValidationResult` | [docs/sdk.md](docs/sdk.md)、[docs/inspect-usage.md](docs/inspect-usage.md)、[sdk/](sdk/) |
 | 校验失败体 | 统一 `ValidationResult` JSON（建议作 HTTP 400） | [schema/jsonschema/validation-result.schema.json](schema/jsonschema/validation-result.schema.json) |
 
 权威顺序：**JSON Schema 为准**。OpenAPI 描述 HTTP 面；protobuf 是可选编码。文档解释语义。

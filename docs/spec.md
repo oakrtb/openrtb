@@ -6,6 +6,7 @@ OakRTB 0.2.0 定义 Exchange（供给）与 Bidder（需求）之间的实时竞
 
 - [transport.md](transport.md) — HTTP、压缩、超时
 - [objects.md](objects.md) — 对象与必填字段
+- [inspect-usage.md](inspect-usage.md) — SDK inspect / Pipeline 使用与 2.6 接入对照
 - [versioning.md](versioning.md) — 兼容策略
 
 机器可读定义：
@@ -51,19 +52,34 @@ BidResponse
 
 ## 必填规则
 
+字段级权威以 JSON Schema 为准。下列为 OakRTB **profile**（相对 IAB OpenRTB 2.6 最小集有收紧，见下节）。
+
 BidRequest：
 
 - `id`、`imp`（长度 ≥ 1）
+- `at`（≥ 1；拒绝未指定的 0）
+- `cur`（至少 1 个 ISO-4217）
 - 每个 `imp.id`
 - 每个 `imp` 至少有 `banner`、`video`、`audio`、`native` 之一
 - `video.mimes`、`audio.mimes`、`native.request` 在对应形态下必填
 
 BidResponse：
 
-- `id`
+- `id`（必须等于 BidRequest.id）
+- `cur`（出价币种；构建器默认 USD，须落在请求 `cur` 允许集合内）
 - 若出价：`seatbid` 至少 1 个，每个含至少 1 条 `bid`
 - 每条 `bid`：`id`、`impid`、`price`（CPM，必须 > 0）
 - `impid` 必须指向请求中某个 `imp.id`
+
+### 相对 IAB OpenRTB 2.6 的差异
+
+| 项 | IAB 2.6 | OakRTB |
+|---|---|---|
+| BidRequest.`at` | 可选，缺省常按 2（二价+）理解 | **必填**（≥1） |
+| BidRequest.`cur` | 可选 | **必填**（≥1） |
+| BidResponse.`cur` | 可选，缺省常 USD | **必填** |
+
+对接只认 IAB 最小集的旧流量时，缺 `at`/`cur` 会被 schema / LightGate 拒绝。对象名与语义仍对齐 2.6-202606。
 
 缺字段表示 **unknown**，不是默认 0（规范写明 default 的字段除外）。未知字段必须忽略。扩展放在 `ext`。
 
@@ -72,7 +88,7 @@ BidResponse：
 | `at` | 含义 |
 |---|---|
 | 1 | 一价：成交价 = 出价 |
-| 2 | 二价+（默认） |
+| 2 | 二价+（IAB 常见缺省；OakRTB 仍须显式下发） |
 | 3 | 仅 Deal：`bidfloor` 即约定成交价 |
 | ≥ 500 | Exchange 自定义 |
 

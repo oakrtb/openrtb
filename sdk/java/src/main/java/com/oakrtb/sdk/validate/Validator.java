@@ -15,7 +15,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/** Validates BidRequest / BidResponse JSON against OakRTB JSON Schema. */
+/**
+ * 针对 OakRTB JSON Schema 校验 BidRequest / BidResponse JSON。
+ *
+ * <p>离线使用 classpath 上的 schema 资源，不依赖外网。
+ */
 public final class Validator {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final JsonSchema REQUEST;
@@ -49,18 +53,42 @@ public final class Validator {
 
   private Validator() {}
 
+  /**
+   * 校验 BidRequest JSON 字节。
+   *
+   * @param json UTF-8 JSON
+   * @return 校验结果（含 embedded native.request 校验）
+   */
   public static ValidationResult validateBidRequest(byte[] json) {
     return validate(json, REQUEST, true);
   }
 
+  /**
+   * 校验 BidResponse JSON 字节。
+   *
+   * @param json UTF-8 JSON
+   * @return 校验结果
+   */
   public static ValidationResult validateBidResponse(byte[] json) {
     return validate(json, RESPONSE, false);
   }
 
+  /**
+   * 校验 BidRequest JSON 字符串。
+   *
+   * @param json JSON 字符串
+   * @return 校验结果
+   */
   public static ValidationResult validateBidRequest(String json) {
     return validateBidRequest(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
+  /**
+   * 校验 BidResponse JSON 字符串。
+   *
+   * @param json JSON 字符串
+   * @return 校验结果
+   */
   public static ValidationResult validateBidResponse(String json) {
     return validateBidResponse(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }

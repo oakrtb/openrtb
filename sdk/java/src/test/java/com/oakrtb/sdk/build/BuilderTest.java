@@ -1,7 +1,9 @@
 package com.oakrtb.sdk.build;
 
+import com.oakrtb.openrtb.v2.BidResponse;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BuilderTest {
@@ -89,5 +91,27 @@ class BuilderTest {
   void noBidValidates() {
     var payload = BidResponseBuilder.create("auction-1").noBid(2).buildValidated();
     assertTrue(payload.ok(), () -> payload.result().toJson());
+  }
+
+  @Test
+  void addSeatBidClearsNoBid() {
+    BidResponse res =
+        BidResponseBuilder.create("auction-1")
+            .noBid(2)
+            .addSeatBid("512", BidResponseBuilder.bid("1", "1", 1.0).banner().build())
+            .build();
+    assertEquals(0, res.getNbr());
+    assertEquals(1, res.getSeatbidCount());
+  }
+
+  @Test
+  void noBidClearsSeatBid() {
+    BidResponse res =
+        BidResponseBuilder.create("auction-1")
+            .addSeatBid("512", BidResponseBuilder.bid("1", "1", 1.0).build())
+            .noBid(7)
+            .build();
+    assertEquals(7, res.getNbr());
+    assertEquals(0, res.getSeatbidCount());
   }
 }

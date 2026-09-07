@@ -136,6 +136,32 @@ func TestNoBidResponseValidated(t *testing.T) {
 	}
 }
 
+func TestAddSeatBidClearsNoBid(t *testing.T) {
+	res, err := build.NewBidResponse("auction-1").
+		NoBid(2).
+		AddSeatBid("512", build.NewBid("1", "1", 1.0).Banner().Build()).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Nbr != 0 || len(res.Seatbid) != 1 {
+		t.Fatalf("nbr=%d seatbid=%d", res.Nbr, len(res.Seatbid))
+	}
+}
+
+func TestNoBidClearsSeatBid(t *testing.T) {
+	res, err := build.NewBidResponse("auction-1").
+		AddSeatBid("512", build.NewBid("1", "1", 1.0).Build()).
+		NoBid(7).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Nbr != 7 || len(res.Seatbid) != 0 {
+		t.Fatalf("nbr=%d seatbid=%d", res.Nbr, len(res.Seatbid))
+	}
+}
+
 func TestRejectsMissingFormat(t *testing.T) {
 	_, err := build.NewBidRequest("x").
 		FirstPrice().
@@ -182,5 +208,80 @@ func TestRejectsSiteAndApp(t *testing.T) {
 	}
 	if req.Site != nil || req.App == nil {
 		t.Fatalf("expected app only, got site=%v app=%v", req.Site, req.App)
+	}
+}
+
+func TestBidResponseRejectsMissingID(t *testing.T) {
+	_, err := build.NewBidResponse("").Build()
+	if err == nil {
+		t.Fatal("expected missing id error")
+	}
+}
+
+func TestBidResponseNeedsSeatBidOrNoBid(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").Build()
+	if err == nil {
+		t.Fatal("expected seatbid or NoBid required")
+	}
+}
+
+func TestBidResponseRejectsEmptySeatBid(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").AddSeatBid("512").Build()
+	if err == nil {
+		t.Fatal("expected empty bids error")
+	}
+}
+
+func TestBidResponseRejectsZeroPrice(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").
+		AddSeatBid("512", build.NewBid("1", "1", 0).Build()).
+		Build()
+	if err == nil {
+		t.Fatal("expected price > 0 error")
+	}
+}
+
+func TestBidResponseRejectsNegativePrice(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").
+		AddSeatBid("512", build.NewBid("1", "1", -0.01).Build()).
+		Build()
+	if err == nil {
+		t.Fatal("expected price > 0 error")
+	}
+}
+
+func TestBidResponseRejectsMissingBidID(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").
+		AddSeatBid("512", build.NewBid("", "1", 1.0).Build()).
+		Build()
+	if err == nil {
+		t.Fatal("expected missing bid id error")
+	}
+}
+
+func TestBidResponseRejectsMissingImpid(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").
+		AddSeatBid("512", build.NewBid("1", "", 1.0).Build()).
+		Build()
+	if err == nil {
+		t.Fatal("expected missing impid error")
+	}
+}
+
+func TestBidResponseRejectsNilBid(t *testing.T) {
+	_, err := build.NewBidResponse("auction-1").
+		AddSeatBid("512", nil).
+		Build()
+	if err == nil {
+		t.Fatal("expected nil bid error")
+	}
+}
+
+func TestBidResponseRejectsEmptyCurrency(t *testing.T) {
+	b := build.NewBidResponse("auction-1")
+	b.Currency("")
+	_, err := b.AddSeatBid("512", build.NewBid("1", "1", 1.0).Build()).Build()
+	if err == nil {
+		t.Fatal("expected empty cur error")
 	}
 }

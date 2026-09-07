@@ -1,6 +1,7 @@
 # 对象字典
 
-字段级约束以 JSON Schema 为准。这里只列层次和必填项。
+字段级约束以 JSON Schema 为准。这里只列层次和必填项。  
+OakRTB 相对 IAB 2.6 最小集收紧了 `at`/`cur`（请求）与响应 `cur`，详见 [spec.md](spec.md#相对-iab-openrtb-26-的差异)。
 
 ## BidRequest
 

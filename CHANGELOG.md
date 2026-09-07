@@ -12,6 +12,14 @@
 - OpenAPI `NoBidResponse` 示例补 `cur`；负例夹具对齐新必填；`validate.py` 校验 OpenAPI 嵌入示例。
 - 全字段覆盖测试：`testdata/full/`（App/Site/Dooh 请求 + 完整响应）；Go/Java 反射校验每个 proto 字段可设值，三语言 + `make validate` 均 schema 通过。
 - Java Validator：`$id` 映射到 classpath，离线校验不再请求 GitHub。
+- Go / Java / Rust SDK：`inspect` 流水线（LightGate → SharedView + ImpView + format 位掩码），供调用方热路径使用。
+- Go / Java / Rust：对称命名 `RequestPipeline` / `ResponsePipeline`（及 `RequestInspect` / `ResponseInspect`）；`RunRequest` / `run_request` 等入口对齐。
+- BidResponse 构建器：`noBid` ↔ `addSeatBid` 互斥（后写清对方状态）；Java `ValidatedPayload` 抽到 `com.oakrtb.sdk.build` 公共类型。
+- Response pipeline 的 `viewBids` 不再重算 shared（deadline/时刻稳定）。
+- 文档：`docs/inspect-usage.md` 三语言 inspect / Pipeline 端到端使用示例。
+- 文档：`spec.md` 必填与 schema 对齐（`at`/`cur`）；`inspect-usage.md` 增加与 OpenRTB 2.6 接入对照（204 / OakRTB profile / tmax）。
+- **Breaking（SDK API）**：`inspect.Format` → `MarkupMask`（字段 `formats`→`markup`）；`match`/`bidmatch` → `fit`（`Fit` / `FitResult`）；`inspect.Channel` → `Inventory`（字段 `channel`→`inventory`）。消除与 proto `Banner.Format` / `Content.Channel` 撞名，并明确 fit≠广告匹配引擎。
+- Go / Java / Rust SDK：可选 **Fit** 层（原 Match）（`impReady` / `bidFit` / `responseFit`）— 组标前形态就绪与 bid↔imp 一致性；ERROR/WARN 软结果，不进 LightGate。
 
 ## 0.1.0 — 2026-09-07
 

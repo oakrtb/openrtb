@@ -7,13 +7,13 @@ import (
 	"github.com/oakrtb/openrtb/sdk/go/validate"
 )
 
-// BidRequestBuilder assembles a BidRequest with inventory + impressions.
+// BidRequestBuilder 组装带库存与展示位的 BidRequest。
 type BidRequestBuilder struct {
 	req *openrtb.BidRequest
 	err error
 }
 
-// NewBidRequest starts a request builder. id is required (auction id).
+// NewBidRequest 创建请求构建器；id 为必填（拍卖标识）。
 func NewBidRequest(id string) *BidRequestBuilder {
 	b := &BidRequestBuilder{req: &openrtb.BidRequest{Id: id}}
 	if id == "" {
@@ -22,17 +22,17 @@ func NewBidRequest(id string) *BidRequestBuilder {
 	return b
 }
 
-// FirstPrice sets at=1 (AuctionType first price).
+// FirstPrice 设置 at=1（第一价格拍卖）。
 func (b *BidRequestBuilder) FirstPrice() *BidRequestBuilder {
 	return b.AuctionType(int32(openrtb.AuctionType_AUCTION_TYPE_FIRST_PRICE))
 }
 
-// SecondPricePlus sets at=2 (default OpenRTB auction type).
+// SecondPricePlus 设置 at=2（OpenRTB 默认拍卖类型）。
 func (b *BidRequestBuilder) SecondPricePlus() *BidRequestBuilder {
 	return b.AuctionType(int32(openrtb.AuctionType_AUCTION_TYPE_SECOND_PRICE_PLUS))
 }
 
-// AuctionType sets BidRequest.at.
+// AuctionType 设置 BidRequest.at。
 func (b *BidRequestBuilder) AuctionType(at int32) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -41,7 +41,7 @@ func (b *BidRequestBuilder) AuctionType(at int32) *BidRequestBuilder {
 	return b
 }
 
-// Tmax sets timeout milliseconds (includes network).
+// Tmax 设置超时毫秒数（含网络延迟）。
 func (b *BidRequestBuilder) Tmax(ms int32) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -50,7 +50,7 @@ func (b *BidRequestBuilder) Tmax(ms int32) *BidRequestBuilder {
 	return b
 }
 
-// Currency sets acceptable bid currencies (ISO-4217), replacing prior list.
+// Currency 设置可接受的出价货币（ISO-4217），替换已有列表。
 func (b *BidRequestBuilder) Currency(codes ...string) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -59,7 +59,7 @@ func (b *BidRequestBuilder) Currency(codes ...string) *BidRequestBuilder {
 	return b
 }
 
-// Test marks the request as test traffic (test=1).
+// Test 标记为测试流量（test=1）。
 func (b *BidRequestBuilder) Test() *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -68,7 +68,7 @@ func (b *BidRequestBuilder) Test() *BidRequestBuilder {
 	return b
 }
 
-// Bcat sets blocked advertiser categories.
+// Bcat 设置屏蔽的广告主类别。
 func (b *BidRequestBuilder) Bcat(cats ...string) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -77,7 +77,7 @@ func (b *BidRequestBuilder) Bcat(cats ...string) *BidRequestBuilder {
 	return b
 }
 
-// Badv sets blocked advertiser domains.
+// Badv 设置屏蔽的广告主域名。
 func (b *BidRequestBuilder) Badv(domains ...string) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -86,7 +86,7 @@ func (b *BidRequestBuilder) Badv(domains ...string) *BidRequestBuilder {
 	return b
 }
 
-// Site sets website inventory (clears app/dooh).
+// Site 设置网站库存（清除 app/dooh）。
 func (b *BidRequestBuilder) Site(site *openrtb.Site) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -97,7 +97,7 @@ func (b *BidRequestBuilder) Site(site *openrtb.Site) *BidRequestBuilder {
 	return b
 }
 
-// App sets application inventory (clears site/dooh).
+// App 设置应用库存（清除 site/dooh）。
 func (b *BidRequestBuilder) App(app *openrtb.App) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -108,7 +108,7 @@ func (b *BidRequestBuilder) App(app *openrtb.App) *BidRequestBuilder {
 	return b
 }
 
-// Dooh sets digital-out-of-home inventory (clears site/app).
+// Dooh 设置数字户外库存（清除 site/app）。
 func (b *BidRequestBuilder) Dooh(dooh *openrtb.Dooh) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -119,7 +119,7 @@ func (b *BidRequestBuilder) Dooh(dooh *openrtb.Dooh) *BidRequestBuilder {
 	return b
 }
 
-// Device sets device context.
+// Device 设置设备上下文。
 func (b *BidRequestBuilder) Device(device *openrtb.Device) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -128,7 +128,7 @@ func (b *BidRequestBuilder) Device(device *openrtb.Device) *BidRequestBuilder {
 	return b
 }
 
-// User sets user/audience context.
+// User 设置用户/受众上下文。
 func (b *BidRequestBuilder) User(user *openrtb.User) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -137,7 +137,7 @@ func (b *BidRequestBuilder) User(user *openrtb.User) *BidRequestBuilder {
 	return b
 }
 
-// Regs sets privacy/regulation signals.
+// Regs 设置隐私/法规信号。
 func (b *BidRequestBuilder) Regs(regs *openrtb.Regs) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -146,7 +146,7 @@ func (b *BidRequestBuilder) Regs(regs *openrtb.Regs) *BidRequestBuilder {
 	return b
 }
 
-// Source sets upstream source / supply chain.
+// Source 设置上游来源/供应链。
 func (b *BidRequestBuilder) Source(source *openrtb.Source) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -155,7 +155,7 @@ func (b *BidRequestBuilder) Source(source *openrtb.Source) *BidRequestBuilder {
 	return b
 }
 
-// AddImp appends an impression opportunity.
+// AddImp 追加一个展示机会。
 func (b *BidRequestBuilder) AddImp(imp *openrtb.Imp) *BidRequestBuilder {
 	if b.err != nil {
 		return b
@@ -168,7 +168,7 @@ func (b *BidRequestBuilder) AddImp(imp *openrtb.Imp) *BidRequestBuilder {
 	return b
 }
 
-// Build returns the BidRequest after structural checks (id + ≥1 imp with format).
+// Build 在结构校验后返回 BidRequest（需 id 及至少一个带格式的 imp）。
 func (b *BidRequestBuilder) Build() (*openrtb.BidRequest, error) {
 	if b.err != nil {
 		return nil, b.err
@@ -206,7 +206,7 @@ func (b *BidRequestBuilder) Build() (*openrtb.BidRequest, error) {
 	return b.req, nil
 }
 
-// MustBuild is Build but panics on error.
+// MustBuild 同 Build，出错时 panic。
 func (b *BidRequestBuilder) MustBuild() *openrtb.BidRequest {
 	req, err := b.Build()
 	if err != nil {
@@ -215,7 +215,7 @@ func (b *BidRequestBuilder) MustBuild() *openrtb.BidRequest {
 	return req
 }
 
-// BuildJSON builds and marshals to OpenRTB JSON.
+// BuildJSON 构建并序列化为 OpenRTB JSON。
 func (b *BidRequestBuilder) BuildJSON() ([]byte, error) {
 	req, err := b.Build()
 	if err != nil {
@@ -224,7 +224,7 @@ func (b *BidRequestBuilder) BuildJSON() ([]byte, error) {
 	return MarshalJSON(req)
 }
 
-// BuildValidated builds, marshals, and runs JSON Schema validation.
+// BuildValidated 构建、序列化并执行 JSON Schema 校验。
 func (b *BidRequestBuilder) BuildValidated() ([]byte, validate.ValidationResult, error) {
 	raw, err := b.BuildJSON()
 	if err != nil {

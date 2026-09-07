@@ -1,4 +1,4 @@
-//! Unified ValidationResult and BidRequest / BidResponse validators.
+//! 统一的 [`ValidationResult`] 与 BidRequest / BidResponse JSON Schema 校验器。
 
 use jsonschema::Validator as JsValidator;
 use serde::{Deserialize, Serialize};
@@ -10,22 +10,28 @@ const BID_REQUEST: &str = include_str!("../schemas/bid-request.schema.json");
 const BID_RESPONSE: &str = include_str!("../schemas/bid-response.schema.json");
 const NATIVE: &str = include_str!("../schemas/native.schema.json");
 
-/// Unified validation outcome (HTTP 400 body when `ok` is false).
+/// 统一校验结果；`ok == false` 时可作为 HTTP 400 响应体。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ValidationResult {
+    /// 是否通过全部校验。
     pub ok: bool,
+    /// 失败项列表；通过时为空。
     pub errors: Vec<ValidationError>,
 }
 
-/// One failing validation check.
+/// 单条校验失败记录。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ValidationError {
+    /// 错误分类（如 `required`、`type`、`parse`、`native`）。
     pub code: String,
+    /// JSON Pointer 路径（如 `/imp/0/id`）。
     pub path: String,
+    /// 人类可读说明。
     pub message: String,
 }
 
 impl ValidationResult {
+    /// 构造通过结果。
     pub fn ok_result() -> Self {
         Self {
             ok: true,
@@ -33,14 +39,17 @@ impl ValidationResult {
         }
     }
 
+    /// 构造失败结果。
     pub fn fail(errors: Vec<ValidationError>) -> Self {
         Self { ok: false, errors }
     }
 
+    /// 序列化为 JSON 字符串。
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).expect("ValidationResult serializes")
     }
 
+    /// 序列化为 JSON 字节。
     pub fn to_json_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).expect("ValidationResult serializes")
     }
@@ -79,12 +88,12 @@ fn compile(schema_str: &str, label: &str) -> JsValidator {
         .unwrap_or_else(|e| panic!("compile {label}: {e}"))
 }
 
-/// Validate BidRequest JSON bytes.
+/// 校验 BidRequest JSON 字节。
 pub fn validate_bid_request(data: &[u8]) -> ValidationResult {
     validate(data, request_validator(), true)
 }
 
-/// Validate BidResponse JSON bytes.
+/// 校验 BidResponse JSON 字节。
 pub fn validate_bid_response(data: &[u8]) -> ValidationResult {
     validate(data, response_validator(), false)
 }

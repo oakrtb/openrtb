@@ -146,3 +146,84 @@ fn no_bid_validates() {
         .expect("build");
     assert!(v.ok(), "{:?}", v.result);
 }
+
+#[test]
+fn add_seat_bid_clears_no_bid() {
+    let v = BidResponseBuilder::new("auction-1")
+        .no_bid(2)
+        .add_seat_bid(
+            "512",
+            vec![BidBuilder::new("1", "1", 1.0).banner().build()],
+        )
+        .build()
+        .expect("build");
+    assert!(v.get("nbr").is_none());
+    assert_eq!(v["seatbid"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn no_bid_clears_seat_bid() {
+    let v = BidResponseBuilder::new("auction-1")
+        .add_seat_bid("512", vec![BidBuilder::new("1", "1", 1.0).build()])
+        .no_bid(7)
+        .build()
+        .expect("build");
+    assert_eq!(v["nbr"], 7);
+    assert!(v.get("seatbid").is_none() || v["seatbid"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn bid_response_build_empty_id() {
+    let err = BidResponseBuilder::new("").build().unwrap_err();
+    assert!(err.contains("BidResponse.id"));
+}
+
+#[test]
+fn bid_response_build_needs_seatbid_or_no_bid() {
+    let err = BidResponseBuilder::new("auction-1")
+        .build()
+        .unwrap_err();
+    assert!(err.contains("seatbid") || err.contains("no_bid"));
+}
+
+#[test]
+fn bid_response_build_empty_seat_bids() {
+    let err = BidResponseBuilder::new("auction-1")
+        .add_seat_bid("512", vec![])
+        .build()
+        .unwrap_err();
+    assert!(err.contains("SeatBid"));
+}
+
+#[test]
+fn bid_response_build_zero_price() {
+    let err = BidResponseBuilder::new("auction-1")
+        .add_seat_bid(
+            "512",
+            vec![BidBuilder::new("1", "1", 0.0).banner().build()],
+        )
+        .build()
+        .unwrap_err();
+    assert!(err.contains("price"));
+}
+
+#[test]
+fn bid_response_build_missing_impid() {
+    let mut bid = BidBuilder::new("1", "1", 1.0).banner().build();
+    bid.as_object_mut().unwrap().insert("impid".into(), serde_json::json!(""));
+    let err = BidResponseBuilder::new("auction-1")
+        .add_seat_bid("512", vec![bid])
+        .build()
+        .unwrap_err();
+    assert!(err.contains("impid"));
+}
+
+#[test]
+fn bid_request_build_missing_at() {
+    let err = BidRequestBuilder::new("auction-1")
+        .currency(&["USD"])
+        .add_imp(BannerImpBuilder::new("1").size(300, 250).build())
+        .build()
+        .unwrap_err();
+    assert!(err.contains("at"));
+}

@@ -1,10 +1,9 @@
-// Package build provides fluent builders for OakRTB BidRequest / BidResponse.
+// Package build 提供 OakRTB BidRequest / BidResponse 的流式构建器。
 //
-// Builders assemble protobuf models with the fields each ad format needs, then
-// MarshalJSON emits OpenRTB-compatible JSON (enum as numbers). Prefer
-// BuildValidated to run JSON Schema checks before sending.
+// 构建器组装 protobuf 模型并填充各广告格式所需字段，MarshalJSON 输出
+// OpenRTB 兼容 JSON（枚举为数字）。发送前优先使用 BuildValidated 做 JSON Schema 校验。
 //
-// Typical flow:
+// 典型流程：
 //
 //	req := build.NewBidRequest("auction-1").
 //		FirstPrice().

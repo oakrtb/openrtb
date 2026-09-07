@@ -5,12 +5,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 
-/** One failing validation check. */
+/**
+ * 单条校验失败项。
+ */
 public final class ValidationError {
   private final String code;
   private final String path;
   private final String message;
 
+  /**
+   * 构造校验错误。
+   *
+   * @param code 错误分类（如 required、type、format）
+   * @param path JSON 路径
+   * @param message 详细消息
+   */
   @JsonCreator
   public ValidationError(
       @JsonProperty("code") String code,
@@ -21,14 +30,29 @@ public final class ValidationError {
     this.message = Objects.requireNonNull(message, "message");
   }
 
+  /**
+   * 错误分类码。
+   *
+   * @return code
+   */
   public String getCode() {
     return code;
   }
 
+  /**
+   * JSON 实例路径。
+   *
+   * @return path
+   */
   public String getPath() {
     return path;
   }
 
+  /**
+   * 人类可读错误消息。
+   *
+   * @return message
+   */
   public String getMessage() {
     return message;
   }

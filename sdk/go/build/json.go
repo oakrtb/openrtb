@@ -20,7 +20,7 @@ var unmarshalOpts = protojson.UnmarshalOptions{
 	DiscardUnknown: true,
 }
 
-// MarshalJSON encodes a protobuf message as OpenRTB JSON.
+// MarshalJSON 将 protobuf 消息编码为 OpenRTB JSON。
 func MarshalJSON(m proto.Message) ([]byte, error) {
 	if m == nil {
 		return nil, fmt.Errorf("build: nil message")
@@ -28,7 +28,7 @@ func MarshalJSON(m proto.Message) ([]byte, error) {
 	return marshalOpts.Marshal(m)
 }
 
-// UnmarshalBidRequest parses OpenRTB BidRequest JSON into a protobuf message.
+// UnmarshalBidRequest 将 OpenRTB BidRequest JSON 解析为 protobuf 消息。
 func UnmarshalBidRequest(data []byte) (*openrtb.BidRequest, error) {
 	out := &openrtb.BidRequest{}
 	if err := unmarshalOpts.Unmarshal(data, out); err != nil {
@@ -37,7 +37,7 @@ func UnmarshalBidRequest(data []byte) (*openrtb.BidRequest, error) {
 	return out, nil
 }
 
-// UnmarshalBidResponse parses OpenRTB BidResponse JSON into a protobuf message.
+// UnmarshalBidResponse 将 OpenRTB BidResponse JSON 解析为 protobuf 消息。
 func UnmarshalBidResponse(data []byte) (*openrtb.BidResponse, error) {
 	out := &openrtb.BidResponse{}
 	if err := unmarshalOpts.Unmarshal(data, out); err != nil {
@@ -46,7 +46,7 @@ func UnmarshalBidResponse(data []byte) (*openrtb.BidResponse, error) {
 	return out, nil
 }
 
-// ValidateJSON runs schema validation on already-encoded OpenRTB JSON.
+// ValidateJSON 对已编码的 OpenRTB JSON 执行 Schema 校验。
 func ValidateJSON(kind string, data []byte) validate.ValidationResult {
 	switch kind {
 	case "request", "bid-request":
