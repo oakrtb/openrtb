@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/oakrtb/openrtb/schema/jsonschema/openrtb.schema.json",
   "title": "OakRTB OpenRTB 2.6",
-  "description": "Machine-readable OpenRTB 2.6 (IAB snapshot 2.6-202606) bid request and bid response. Extra fields are allowed so exchanges can extend via ext and ignore unknown attributes.",
-  "$comment": "OakRTB protocol 0.2.0, aligned with IAB OpenRTB 2.6-202606. See docs/spec.md.",
+  "description": "OakRTB JSON Schema for BidRequest/BidResponse (IAB OpenRTB 2.6-202606 field names). OakRTB profile: BidRequest requires at+cur; BidResponse requires cur. Extra fields allowed via additionalProperties / ext.",
+  "$comment": "OakRTB protocol 0.2.0, aligned with IAB OpenRTB 2.6-202606. Validation authority for JSON; protobuf is codec-only. See docs/spec.md.",
   "$defs": {
     "Ext": {
       "title": "Extension object",
@@ -209,9 +209,9 @@
     "RefSettings": {
       "type": "object",
       "additionalProperties": true,
+      "description": "Imp.refresh.refsettings[] entry. Refresh count lives on Refresh.count, not here.",
       "properties": {
         "reftype": { "type": "integer" },
-        "count": { "type": "integer" },
         "minint": { "type": "integer" },
         "ext": { "$ref": "#/$defs/Ext" }
       }

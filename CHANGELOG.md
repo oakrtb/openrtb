@@ -23,6 +23,8 @@
 - Java SDK 依赖升级到主流稳定线：Protobuf **4.36.1**、Jackson **2.22.2**、networknt json-schema-validator **2.0.7**（Jackson 2 兼容线）、JUnit **5.14.4**；`Validator` 对齐 networknt 2.x `SchemaRegistry` API。
 - Go SDK：`go 1.25`、`jsonschema/v6` **v6.0.3**、`golang.org/x/text` **v0.41.0**（`protobuf` 已为 **v1.36.12**）。
 - Rust SDK：`jsonschema` **0.55.1**、`prost`/`prost-build` **0.14.4**、`serde` **1.0.229**、`serde_json` **1.0.151**、`thiserror` **2.0.20**、`walkdir` **2.5.0**；`validate` 对齐 jsonschema `Registry` API。
+- 一致性：去掉 schema 误挂的 `RefSettings.count`（`count` 仅属 `Refresh`）；澄清 schema / proto / OpenAPI 分层；OpenAPI 标明 JSON-only 合同与 OakRTB `at`/`cur` profile；`Content-Type` 改为可选（缺省 JSON）；proto 为 `private_auction` / `us_privacy` / `gpp_sid` 增加 `json_name`；文档修正最小 Banner 必填说明与 `mtype:0` 语义。
+- SDK：权威 schema 仅 `schema/jsonschema/`；Java/Rust 构建时拷入；Go 提交 `validate/schemas/*.json` 副本（`make sync-schemas`），支持 `go get`。
 
 ## 0.1.0 — 2026-09-07
 

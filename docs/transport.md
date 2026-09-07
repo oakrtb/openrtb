@@ -6,19 +6,27 @@ OakRTB 竞价走 HTTP。BidRequest 必须 **POST**，以便承载较大 JSON 或
 
 默认路径：`POST /openrtb/v2/auction`
 
-完整合同见 `openapi/openrtb.yaml`。Exchange 与 Bidder 集成时可改路径，但语义不变。
+合同分层：
+
+| 层 | 文件 | 管什么 |
+|---|---|---|
+| JSON HTTP | `openapi/openrtb.yaml` | 路径、状态码、压缩头、JSON 示例 |
+| 对象校验 | `schema/jsonschema/` | BidRequest / BidResponse / Native 合法性 |
+| Protobuf | `proto/oakrtb/v2/openrtb.proto` | `application/x-protobuf` 编解码（不在 OpenAPI 中建模） |
+
+Exchange 与 Bidder 集成时可改路径，但语义不变。
 
 ## 头
 
 | 头 | 方向 | 说明 |
 |---|---|---|
-| `Content-Type: application/json` | 双向 | JSON 线格式 |
+| `Content-Type: application/json` | 双向 | JSON 线格式（OpenAPI 合同） |
 | `Content-Type: application/x-protobuf` | 双向 | 可选，对应 `proto/oakrtb/v2/openrtb.proto` |
 | `x-openrtb-version: 2.6` | 请求必填建议；响应可选 | 线格式主次版本；对象模型对齐快照 2.6-202606 |
 | `Accept-Encoding` | Exchange → Bidder | 可接受的响应压缩算法，逗号分隔，可带 `q` 权重 |
 | `Content-Encoding` | 双向 | 当前 body 使用的压缩算法（单一 token） |
 
-缺 `Content-Type` 时按 `application/json` 处理。
+缺 `Content-Type` 时按 `application/json` 处理。Protobuf 请求必须显式声明 `application/x-protobuf`。
 
 ## 压缩
 

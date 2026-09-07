@@ -27,13 +27,20 @@ OakRTB 版本写在 `VERSION`，遵循 SemVer。
 
 破坏性变更升 MAJOR，并视情况使用新路径（例如 `/openrtb/v3/auction`）。
 
-## Schema 与文档
+## Schema / Proto / OpenAPI
 
-JSON Schema 是校验权威。改对象时同一 PR 必须同时更新：
+| 产物 | 角色 |
+|---|---|
+| `schema/jsonschema/` | **JSON 校验权威**（required、互斥、数值范围） |
+| `proto/oakrtb/v2/openrtb.proto` | 二进制编解码；注释对齐语义，**不**强制 required / oneOf |
+| `openapi/openrtb.yaml` | JSON HTTP 合同（`$ref` schema）；不建模 protobuf |
+
+改对象时同一 PR 必须同时更新：
 
 1. `schema/jsonschema/`
 2. `proto/oakrtb/v2/openrtb.proto`（若该字段走 protobuf）
-3. `docs/objects.md` / `docs/spec.md`
-4. `examples/bid-request|bid-response/` 与 `testdata/invalid/`
-5. `CHANGELOG.md`
-6. 若改了 schema：`make sync-schemas` 并跑 `make sdk-test`
+3. `openapi/openrtb.yaml`（若改 HTTP 语义、示例或头）
+4. `docs/objects.md` / `docs/spec.md` / `docs/transport.md`
+5. `examples/bid-request|bid-response/` 与 `testdata/invalid/`
+6. `CHANGELOG.md`
+7. 若改了 schema：`make sync-schemas`（刷新 Go `validate/schemas/*.json`）并跑 `make sdk-test`；提交更新后的 Go 副本

@@ -10,7 +10,9 @@ option java_outer_classname = "OpenRtbProto";
 // OakRTB protocol 0.2.0 — OpenRTB 2.6-202606 的 protobuf 编码。
 // JSON 字段名与 IAB OpenRTB 2.6 对齐，同一业务载荷可走 application/json 或 application/x-protobuf。
 //
-// 权威校验仍以 schema/jsonschema 为准。
+// 权威校验仍以 schema/jsonschema 为准（required / site·app·dooh 互斥 / mtype∈{1..4} 等）。
+// Proto3 无法表达上述约束：标量缺省为 0/""，不等于 JSON「缺字段 = unknown」。
+// 含下划线的 OpenRTB 字段须带 json_name，避免默认 protobuf JSON 变成 camelCase。
 // 注释约定：每个 message/enum 须说明结构用途与场景；每个字段/枚举值须说明含义；
 // 可枚举整型字段在注释中写明取值来源（对应 enum）及关键取值释义；特殊值（如 startdelay/slotinpod 负值）就地写清。
 // 可枚举整型字段：标准取值定义在上方 enum（源自 OpenRTB 2.6 / AdCOM 1.0）；
@@ -23,8 +25,9 @@ option java_outer_classname = "OpenRtbProto";
 
 // MarkupType：素材形态，对应 Bid.mtype，并暗示 Imp 下应出现的子对象。
 // 场景：同一 Imp 同时带 banner/video 等多形态时，出价必须用 mtype 声明中了哪一种。
+// JSON Schema 仅允许 1–4；0 仅作 proto 未设哨兵，合法 JSON 出价不得写 mtype:0。
 enum MarkupType {
-  MARKUP_TYPE_UNSPECIFIED = 0; // 未指定；多形态 Imp 时不推荐
+  MARKUP_TYPE_UNSPECIFIED = 0; // 未指定（proto 缺省）；JSON 线格式勿使用
   MARKUP_TYPE_BANNER = 1;      // 横幅/展示；对应 Imp.banner
   MARKUP_TYPE_VIDEO = 2;       // 视频；对应 Imp.video
   MARKUP_TYPE_AUDIO = 3;       // 音频；对应 Imp.audio
@@ -713,7 +716,7 @@ message Native {
 // ---------------------------------------------------------------------------
 message Pmp {
   // 是否仅私有拍卖。取值 FlagBool：0=可对公开市场，1=仅私有。场景：PDB 封闭交易。
-  int32 private_auction = 1;
+  int32 private_auction = 1 [json_name = "private_auction"];
   // 可用成交条件列表。场景：一条 Imp 挂多个 Deal 供 DSP 选择。
   repeated Deal deals = 2;
   // 扩展：JSON 对象字符串。
@@ -1165,9 +1168,9 @@ message SupplyChainNode {
 message Regs {
   int32 coppa = 1;              // 是否适用 COPPA。取值 FlagBool：0=否，1=儿童流量适用
   int32 gdpr = 2;               // 是否适用 GDPR。取值 FlagBool：0=否，1=适用
-  string us_privacy = 3;        // CCPA/US Privacy 字符串
+  string us_privacy = 3 [json_name = "us_privacy"]; // CCPA/US Privacy 字符串
   string gpp = 4;               // Global Privacy Platform 串
-  repeated int32 gpp_sid = 5;   // GPP 区段 ID 列表
+  repeated int32 gpp_sid = 5 [json_name = "gpp_sid"]; // GPP 区段 ID 列表
   // 扩展：JSON 对象字符串。
   string ext = 99;
 }
@@ -1270,7 +1273,8 @@ message Bid {
   // 视频/音频时长秒数。
   int32 dur = 29;
   // 素材形态。多形态 Imp 时强烈推荐，避免歧义。
-  // 素材形态。取值 MarkupType：1=Banner，2=Video，3=Audio，4=Native。多形态 Imp 时强烈推荐，避免歧义。
+  // 素材形态。取值 MarkupType：1=Banner，2=Video，3=Audio，4=Native。多形态 Imp 时强烈推荐。
+  // JSON Schema 禁止 0；proto 缺省 UNSPECIFIED=0 仅表示未设，序列化到 JSON 前应写成 1–4。
   MarkupType mtype = 30;
   // 声明占用的 pod 槽位。取值 SlotInPod；特殊 -1=最后槽。场景：CTV pod 选槽出价。
   int32 slotinpod = 31;

@@ -1,6 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/oakrtb/openrtb/schema/jsonschema/bid-request.schema.json",
-  "title": "OakRTB BidRequest",
-  "$ref": "openrtb.schema.json#/$defs/BidRequest"
-}

@@ -5,10 +5,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::OnceLock;
 
-const OPENRTB: &str = include_str!("../schemas/openrtb.schema.json");
-const BID_REQUEST: &str = include_str!("../schemas/bid-request.schema.json");
-const BID_RESPONSE: &str = include_str!("../schemas/bid-response.schema.json");
-const NATIVE: &str = include_str!("../schemas/native.schema.json");
+// 由 build.rs 从仓库根 schema/jsonschema/ 拷入 OUT_DIR。
+const OPENRTB: &str = include_str!(concat!(env!("OUT_DIR"), "/schemas/openrtb.schema.json"));
+const BID_REQUEST: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/schemas/bid-request.schema.json"));
+const BID_RESPONSE: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/schemas/bid-response.schema.json"));
+const NATIVE: &str = include_str!(concat!(env!("OUT_DIR"), "/schemas/native.schema.json"));
 
 /// 统一校验结果；`ok == false` 时可作为 HTTP 400 响应体。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

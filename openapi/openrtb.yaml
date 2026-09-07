@@ -3,11 +3,17 @@ info:
   title: OakRTB OpenRTB Bidding API
   version: 0.2.0
   description: |
-    HTTP contract for OakRTB real-time bidding.
+    JSON HTTP contract for OakRTB real-time bidding (`POST /openrtb/v2/auction`).
 
-    Compatible with IAB OpenRTB 2.6 JSON (aligned snapshot 2.6-202606).
-    Exchange POSTs a BidRequest; bidder returns BidResponse (200), no-bid (204),
-    or a BidResponse with `nbr`.
+    Field names align with IAB OpenRTB 2.6 (snapshot 2.6-202606). OakRTB profile
+    tightenings (enforced by JSON Schema): BidRequest requires `at` and `cur`;
+    BidResponse requires `cur`. See docs/spec.md.
+
+    Exchange POSTs a BidRequest; bidder returns BidResponse (200), empty no-bid
+    (204), or BidResponse with `nbr`.
+
+    Optional `application/x-protobuf` is defined by proto/oakrtb/v2/openrtb.proto
+    and docs/transport.md — not modeled in this OpenAPI document.
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -38,12 +44,16 @@ paths:
             OakRTB object model is aligned to dated snapshot 2.6-202606.
         - in: header
           name: Content-Type
-          required: true
+          required: false
           schema:
             type: string
             enum:
               - application/json
               - application/json; charset=utf-8
+          description: |
+            JSON body media type. If omitted, treat as application/json
+            (see docs/transport.md). Protobuf uses application/x-protobuf and
+            is outside this OpenAPI contract.
         - in: header
           name: Accept-Encoding
           required: false
@@ -115,7 +125,7 @@ paths:
           description: No-bid with empty body.
         "400":
           description: |
-            Malformed JSON/protobuf, or BidRequest failed JSON Schema validation.
+            Malformed JSON, or BidRequest failed JSON Schema validation.
             Body is a ValidationResult with ok=false.
           content:
             application/json:

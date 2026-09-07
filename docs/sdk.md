@@ -29,13 +29,21 @@ OakRTB 提供 Go / Java / Rust 的**模型生成**、**请求/响应构建器**�
 
 ## 构建
 
+权威 JSON Schema 只维护在仓库根 `schema/jsonschema/`。各语言摄入方式：
+
+| 语言 | 摄入方式 |
+|---|---|
+| Java | `maven-resources-plugin` → jar（构建时拷入，不入库） |
+| Rust | `build.rs` → `OUT_DIR`（构建时拷入，不入库） |
+| Go | `make sync-schemas` → 提交 `sdk/go/validate/schemas/*.json`（`//go:embed`，`go get` 可用） |
+
 ```bash
-make sync-schemas  # 将 schema 同步进各 SDK 资源目录
+make sync-schemas  # 改 schema 后刷新 Go 副本并提交
 make proto-go
 make proto-java
 make proto-rust
 make sdk-test
-make jar           # gen/java/dist/oakrtb-sdk-<version>.jar 与 -all.jar
+make jar
 ```
 
 ## 怎么按广告类型组请求

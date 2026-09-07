@@ -11,13 +11,10 @@ install-dev:
 validate:
 	python3 scripts/validate.py
 
+# 将权威 schema 同步为 Go 模块内入库副本（Java/Rust 构建时各自拷入）。
 sync-schemas:
-	@mkdir -p sdk/go/validate/schemas \
-		sdk/java/src/main/resources/schema/jsonschema \
-		sdk/rust/schemas
+	@mkdir -p sdk/go/validate/schemas
 	cp schema/jsonschema/*.json sdk/go/validate/schemas/
-	cp schema/jsonschema/*.json sdk/java/src/main/resources/schema/jsonschema/
-	cp schema/jsonschema/*.json sdk/rust/schemas/
 
 # Syntax-check protobuf (no language plugins required).
 proto-check:
@@ -48,16 +45,16 @@ proto: proto-go proto-java proto-rust
 sdk-test-go: sync-schemas
 	cd sdk/go && go test ./...
 
-sdk-test-java: sync-schemas
+sdk-test-java:
 	cd sdk/java && mvn -q test
 
-sdk-test-rust: sync-schemas
+sdk-test-rust:
 	cd sdk/rust && cargo test -q
 
 sdk-test: sdk-test-go sdk-test-java sdk-test-rust
 
 # Thin jar + shaded all-in-one jar under gen/java/dist/
-jar: sync-schemas
+jar:
 	cd sdk/java && mvn -q package -DskipTests
 	@mkdir -p gen/java/dist
 	cp sdk/java/target/oakrtb-sdk-$(VERSION).jar gen/java/dist/

@@ -12,6 +12,9 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
+// Schema 权威在仓库根 schema/jsonschema/；此处为入库副本，供 //go:embed 与 go get。
+// 改权威后执行：make sync-schemas
+//
 //go:embed schemas/openrtb.schema.json
 var schemaOpenRTB []byte
 

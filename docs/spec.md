@@ -11,11 +11,13 @@ OakRTB 0.2.0 定义 Exchange（供给）与 Bidder（需求）之间的实时竞
 
 机器可读定义：
 
-- `schema/jsonschema/bid-request.schema.json`
+- `schema/jsonschema/bid-request.schema.json` — **JSON 校验权威**（必填、互斥、类型约束）
 - `schema/jsonschema/bid-response.schema.json`
 - `schema/jsonschema/native.schema.json`
-- `proto/oakrtb/v2/openrtb.proto`
-- `openapi/openrtb.yaml`
+- `proto/oakrtb/v2/openrtb.proto` — protobuf **编解码**（不能表达 schema 的 required / oneOf；缺省 0 ≠ JSON 缺字段）
+- `openapi/openrtb.yaml` — **JSON HTTP** 路径/状态码/头（对象体 `$ref` schema；protobuf 见 transport）
+
+`Bid.mtype`：JSON Schema 仅允许 `1–4`；proto 枚举含 `UNSPECIFIED=0` 表示未设。多形态 Imp 出价前须选定并写出非 0 的 `mtype`。
 
 ## 角色
 
@@ -130,4 +132,4 @@ Exchange 在 `nurl` / `burl` / `lurl` 以及 markup 中替换宏：
 
 ## 样例
 
-见 `examples/bid-request/` 与 `examples/bid-response/`。最小 Banner 请求只需要 `id` + 一个带 `banner` 的 `imp`。生产流量还应带 `site` 或 `app`、`device`、`source.schain`。
+见 `examples/bid-request/` 与 `examples/bid-response/`。OakRTB 最小 Banner 请求需要：`id`、`at`、`cur`（≥1）、以及至少一个带 `banner` 的 `imp`。生产流量还应带 `site` / `app` / `dooh` 之一、`device`、`source.schain`。

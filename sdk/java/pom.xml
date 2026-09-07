@@ -94,6 +94,32 @@
           <release>${maven.compiler.release}</release>
         </configuration>
       </plugin>
+      <!-- 权威 schema 在仓库根 schema/jsonschema/；打包时拷入 classpath -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>copy-json-schemas</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}/schema/jsonschema</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/../../schema/jsonschema</directory>
+                  <includes>
+                    <include>*.json</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <!-- xolstice：OpenRTB 生态常用；与 Google protoc 4.x 制品对齐 -->
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
