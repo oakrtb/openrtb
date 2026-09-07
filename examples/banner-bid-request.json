@@ -1,0 +1,68 @@
+{
+  "id": "80ce30c53c16e6ede735f123ef6e32361bfc7b22",
+  "at": 1,
+  "tmax": 120,
+  "cur": ["USD"],
+  "imp": [
+    {
+      "id": "1",
+      "bidfloor": 0.03,
+      "bidfloorcur": "USD",
+      "secure": 1,
+      "banner": {
+        "w": 300,
+        "h": 250,
+        "pos": 1,
+        "mimes": ["image/jpeg", "image/png", "image/gif"]
+      }
+    }
+  ],
+  "site": {
+    "id": "102855",
+    "domain": "www.example.com",
+    "page": "https://www.example.com/article/1234",
+    "cat": ["IAB3-1"],
+    "publisher": {
+      "id": "8953",
+      "name": "Example Publisher",
+      "domain": "example.com"
+    }
+  },
+  "device": {
+    "ua": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36",
+    "ip": "192.0.2.1",
+    "devicetype": 1,
+    "os": "Android",
+    "osv": "14",
+    "make": "Google",
+    "model": "Pixel 8",
+    "ifa": "ae3fa2b6-8d2a-4c5e-9b11-0123456789ab",
+    "geo": {
+      "country": "USA",
+      "region": "CA",
+      "type": 2
+    }
+  },
+  "user": {
+    "id": "55816b39711f9b5acf3b90e313ed29e51665623f"
+  },
+  "source": {
+    "fd": 0,
+    "tid": "txn-80ce30c53c16e6ed",
+    "schain": {
+      "complete": 1,
+      "ver": "1.0",
+      "nodes": [
+        {
+          "asi": "example-ssp.com",
+          "sid": "publisher-8953",
+          "hp": 1
+        }
+      ]
+    }
+  },
+  "regs": {
+    "gdpr": 0,
+    "coppa": 0
+  }
+}

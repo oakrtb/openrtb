@@ -1,0 +1,66 @@
+{
+  "id": "video-req-001",
+  "at": 1,
+  "tmax": 200,
+  "cur": ["USD"],
+  "imp": [
+    {
+      "id": "1",
+      "bidfloor": 5.0,
+      "bidfloorcur": "USD",
+      "secure": 1,
+      "rwdd": 0,
+      "video": {
+        "mimes": ["video/mp4", "video/webm"],
+        "minduration": 5,
+        "maxduration": 30,
+        "protocols": [2, 3, 5, 6],
+        "w": 1920,
+        "h": 1080,
+        "startdelay": 0,
+        "plcmt": 1,
+        "linearity": 1,
+        "skip": 1,
+        "skipafter": 5,
+        "playbackmethod": [1],
+        "podid": "pod-1",
+        "slotinpod": 1,
+        "companionad": [
+          {
+            "w": 300,
+            "h": 250,
+            "id": "1",
+            "vcm": 1
+          }
+        ]
+      }
+    }
+  ],
+  "app": {
+    "id": "ctv-app-1",
+    "name": "Example CTV",
+    "bundle": "com.example.ctv",
+    "publisher": {
+      "id": "pub-ctv",
+      "domain": "example-ctv.com"
+    },
+    "content": {
+      "title": "Example Show",
+      "series": "Example Series",
+      "season": "2",
+      "episode": 5,
+      "livestream": 0,
+      "len": 2400,
+      "network": { "name": "Example Network", "domain": "examplenetwork.com" },
+      "channel": { "name": "Example Channel", "domain": "examplechannel.com" }
+    }
+  },
+  "device": {
+    "devicetype": 3,
+    "os": "tvOS",
+    "make": "Apple",
+    "model": "Apple TV",
+    "ifa": "00000000-0000-0000-0000-000000000001",
+    "ip": "198.51.100.10"
+  }
+}

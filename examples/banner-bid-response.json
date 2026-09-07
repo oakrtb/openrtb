@@ -1,0 +1,26 @@
+{
+  "id": "80ce30c53c16e6ede735f123ef6e32361bfc7b22",
+  "bidid": "abc123",
+  "cur": "USD",
+  "seatbid": [
+    {
+      "seat": "512",
+      "bid": [
+        {
+          "id": "1",
+          "impid": "1",
+          "price": 1.23,
+          "adomain": ["advertiser.com"],
+          "cid": "campaign-42",
+          "crid": "creative-9",
+          "mtype": 1,
+          "w": 300,
+          "h": 250,
+          "adm": "<a href=\"https://advertiser.com/click\"><img src=\"https://cdn.example/ad.png\" width=\"300\" height=\"250\"/></a>",
+          "nurl": "https://dsp.example/win?price=${AUCTION_PRICE}&id=${AUCTION_ID}",
+          "burl": "https://dsp.example/bill?price=${AUCTION_PRICE}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,521 @@
+syntax = "proto3";
+
+package oakrtb.v2;
+
+option go_package = "github.com/oakrtb/openrtb/gen/go/oakrtb/v2;openrtb";
+option java_package = "com.oakrtb.openrtb.v2";
+option java_multiple_files = true;
+option java_outer_classname = "OpenRtbProto";
+
+// OakRTB protocol 0.1.0 — protobuf encoding of OpenRTB 2.6 JSON objects.
+// JSON field names match IAB OpenRTB 2.6 so the same payload can travel as
+// application/json or application/x-protobuf.
+//
+// Extension object `ext` is encoded as a JSON object string to keep this proto
+// self-contained (no google.protobuf.Struct dependency).
+
+// Markup type corresponding to Bid.mtype / Imp subordinate object.
+enum MarkupType {
+  MARKUP_TYPE_UNSPECIFIED = 0;
+  MARKUP_TYPE_BANNER = 1;
+  MARKUP_TYPE_VIDEO = 2;
+  MARKUP_TYPE_AUDIO = 3;
+  MARKUP_TYPE_NATIVE = 4;
+}
+
+enum AuctionType {
+  AUCTION_TYPE_UNSPECIFIED = 0;
+  AUCTION_TYPE_FIRST_PRICE = 1;
+  AUCTION_TYPE_SECOND_PRICE_PLUS = 2;
+  AUCTION_TYPE_FIXED_PRICE = 3; // Deal.at only
+}
+
+message BidRequest {
+  string id = 1;
+  repeated Imp imp = 2;
+  Site site = 3;
+  App app = 4;
+  Dooh dooh = 5;
+  Device device = 6;
+  User user = 7;
+  int32 test = 8;
+  int32 at = 9;
+  int32 tmax = 10;
+  repeated string wseat = 11;
+  repeated string bseat = 12;
+  int32 allimps = 13;
+  repeated string cur = 14;
+  repeated string wlang = 15;
+  repeated string wlangb = 16;
+  repeated string acat = 17;
+  repeated string bcat = 18;
+  int32 cattax = 19;
+  repeated string badv = 20;
+  repeated string bapp = 21;
+  Source source = 22;
+  Regs regs = 23;
+  string ext = 99;
+}
+
+message Imp {
+  string id = 1;
+  repeated Metric metric = 2;
+  Banner banner = 3;
+  Video video = 4;
+  Audio audio = 5;
+  Native native = 6;
+  Pmp pmp = 7;
+  string displaymanager = 8;
+  string displaymanagerver = 9;
+  int32 instl = 10;
+  string tagid = 11;
+  double bidfloor = 12;
+  string bidfloorcur = 13;
+  int32 clickbrowser = 14;
+  int32 secure = 15;
+  repeated string iframebuster = 16;
+  int32 rwdd = 17;
+  int32 ssai = 18;
+  int32 exp = 19;
+  Qty qty = 20;
+  double dt = 21;
+  string ext = 99;
+}
+
+message Metric {
+  string type = 1;
+  double value = 2;
+  string vendor = 3;
+  string ext = 99;
+}
+
+message Banner {
+  repeated Format format = 1;
+  int32 w = 2;
+  int32 h = 3;
+  repeated int32 btype = 4;
+  repeated int32 battr = 5;
+  int32 pos = 6;
+  repeated string mimes = 7;
+  int32 topframe = 8;
+  repeated int32 expdir = 9;
+  repeated int32 api = 10;
+  string id = 11;
+  int32 vcm = 12;
+  string ext = 99;
+}
+
+message Format {
+  int32 w = 1;
+  int32 h = 2;
+  int32 wratio = 3;
+  int32 hratio = 4;
+  int32 wmin = 5;
+  string ext = 99;
+}
+
+message Video {
+  repeated string mimes = 1;
+  int32 minduration = 2;
+  int32 maxduration = 3;
+  int32 startdelay = 4;
+  int32 maxseq = 5;
+  int32 poddur = 6;
+  repeated int32 protocols = 7;
+  int32 w = 8;
+  int32 h = 9;
+  string podid = 10;
+  int32 podseq = 11;
+  repeated int32 rqddurs = 12;
+  int32 plcmt = 13;
+  int32 linearity = 14;
+  int32 skip = 15;
+  int32 skipmin = 16;
+  int32 skipafter = 17;
+  int32 slotinpod = 18;
+  double mincpmpersec = 19;
+  repeated int32 battr = 20;
+  int32 maxextended = 21;
+  int32 minbitrate = 22;
+  int32 maxbitrate = 23;
+  int32 boxingallowed = 24;
+  repeated int32 playbackmethod = 25;
+  int32 playbackend = 26;
+  repeated int32 delivery = 27;
+  int32 pos = 28;
+  repeated Banner companionad = 29;
+  repeated int32 api = 30;
+  repeated int32 companiontype = 31;
+  string ext = 99;
+}
+
+message Audio {
+  repeated string mimes = 1;
+  int32 minduration = 2;
+  int32 maxduration = 3;
+  int32 poddur = 4;
+  repeated int32 protocols = 5;
+  int32 startdelay = 6;
+  repeated int32 rqddurs = 7;
+  string podid = 8;
+  int32 podseq = 9;
+  int32 slotinpod = 10;
+  double mincpmpersec = 11;
+  repeated int32 battr = 12;
+  int32 maxextended = 13;
+  int32 minbitrate = 14;
+  int32 maxbitrate = 15;
+  repeated int32 delivery = 16;
+  repeated Banner companionad = 17;
+  repeated int32 api = 18;
+  repeated int32 companiontype = 19;
+  int32 maxseq = 20;
+  int32 feed = 21;
+  int32 stitched = 22;
+  int32 nvol = 23;
+  string ext = 99;
+}
+
+message Native {
+  string request = 1;
+  string ver = 2;
+  repeated int32 api = 3;
+  repeated int32 battr = 4;
+  string ext = 99;
+}
+
+message Pmp {
+  int32 private_auction = 1;
+  repeated Deal deals = 2;
+  string ext = 99;
+}
+
+message Deal {
+  string id = 1;
+  double bidfloor = 2;
+  string bidfloorcur = 3;
+  int32 at = 4;
+  repeated string wseat = 5;
+  repeated string wadomain = 6;
+  int32 guar = 7;
+  double mincpmpersec = 8;
+  string ext = 99;
+}
+
+message Qty {
+  double multiplier = 1;
+  int32 sourcetype = 2;
+  string vendor = 3;
+  string ext = 99;
+}
+
+message Site {
+  string id = 1;
+  string name = 2;
+  string domain = 3;
+  int32 cattax = 4;
+  repeated string cat = 5;
+  repeated string sectioncat = 6;
+  repeated string pagecat = 7;
+  string page = 8;
+  string ref = 9;
+  string search = 10;
+  int32 mobile = 11;
+  int32 privacypolicy = 12;
+  Publisher publisher = 13;
+  Content content = 14;
+  string keywords = 15;
+  repeated string kwarray = 16;
+  string inventorypartnerdomain = 17;
+  string ext = 99;
+}
+
+message App {
+  string id = 1;
+  string name = 2;
+  string bundle = 3;
+  string domain = 4;
+  string storeurl = 5;
+  int32 cattax = 6;
+  repeated string cat = 7;
+  repeated string sectioncat = 8;
+  repeated string pagecat = 9;
+  string ver = 10;
+  int32 privacypolicy = 11;
+  int32 paid = 12;
+  Publisher publisher = 13;
+  Content content = 14;
+  string keywords = 15;
+  repeated string kwarray = 16;
+  string inventorypartnerdomain = 17;
+  string ext = 99;
+}
+
+message Dooh {
+  string id = 1;
+  string name = 2;
+  int32 venue = 3;
+  int32 fixed = 4;
+  Publisher publisher = 5;
+  string domain = 6;
+  string keywords = 7;
+  repeated string kwarray = 8;
+  Content content = 9;
+  string ext = 99;
+}
+
+message Publisher {
+  string id = 1;
+  string name = 2;
+  int32 cattax = 3;
+  repeated string cat = 4;
+  string domain = 5;
+  string ext = 99;
+}
+
+message Producer {
+  string id = 1;
+  string name = 2;
+  int32 cattax = 3;
+  repeated string cat = 4;
+  string domain = 5;
+  string ext = 99;
+}
+
+message Content {
+  string id = 1;
+  int32 episode = 2;
+  string title = 3;
+  string series = 4;
+  string season = 5;
+  string artist = 6;
+  string genre = 7;
+  string album = 8;
+  string isrc = 9;
+  Producer producer = 10;
+  string url = 11;
+  int32 cattax = 12;
+  repeated string cat = 13;
+  int32 prodq = 14;
+  int32 context = 15;
+  string contentrating = 16;
+  string userrating = 17;
+  int32 qagmediarating = 18;
+  string keywords = 19;
+  repeated string kwarray = 20;
+  int32 livestream = 21;
+  int32 sourcerelationship = 22;
+  int32 len = 23;
+  string language = 24;
+  string langb = 25;
+  int32 embeddable = 26;
+  repeated Data data = 27;
+  Network network = 28;
+  Channel channel = 29;
+  string ext = 99;
+}
+
+message Network {
+  string id = 1;
+  string name = 2;
+  string domain = 3;
+  string ext = 99;
+}
+
+message Channel {
+  string id = 1;
+  string name = 2;
+  string domain = 3;
+  string ext = 99;
+}
+
+message Device {
+  Geo geo = 1;
+  int32 dnt = 2;
+  int32 lmt = 3;
+  string ua = 4;
+  UserAgent sua = 5;
+  string ip = 6;
+  string ipv6 = 7;
+  int32 devicetype = 8;
+  string make = 9;
+  string model = 10;
+  string os = 11;
+  string osv = 12;
+  string hwv = 13;
+  int32 h = 14;
+  int32 w = 15;
+  int32 ppi = 16;
+  double pxratio = 17;
+  int32 js = 18;
+  int32 geofetch = 19;
+  string language = 20;
+  string langb = 21;
+  string carrier = 22;
+  string mccmnc = 23;
+  int32 connectiontype = 24;
+  string ifa = 25;
+  string ext = 99;
+}
+
+message UserAgent {
+  repeated BrandVersion browsers = 1;
+  BrandVersion platform = 2;
+  int32 mobile = 3;
+  string architecture = 4;
+  string bitness = 5;
+  string model = 6;
+  int32 source = 7;
+  string ext = 99;
+}
+
+message BrandVersion {
+  string brand = 1;
+  repeated string version = 2;
+  string ext = 99;
+}
+
+message Geo {
+  double lat = 1;
+  double lon = 2;
+  int32 type = 3;
+  int32 accuracy = 4;
+  int32 lastfix = 5;
+  int32 ipservice = 6;
+  string country = 7;
+  string region = 8;
+  string metro = 9;
+  string city = 10;
+  string zip = 11;
+  int32 utcoffset = 12;
+  string ext = 99;
+}
+
+message User {
+  string id = 1;
+  string buyeruid = 2;
+  string keywords = 3;
+  repeated string kwarray = 4;
+  string customdata = 5;
+  Geo geo = 6;
+  repeated Data data = 7;
+  string consent = 8;
+  repeated EID eids = 9;
+  string ext = 99;
+}
+
+message Data {
+  string id = 1;
+  string name = 2;
+  repeated string cids = 3;
+  repeated Segment segment = 4;
+  string ext = 99;
+}
+
+message Segment {
+  string id = 1;
+  string name = 2;
+  string value = 3;
+  string ext = 99;
+}
+
+message EID {
+  string source = 1;
+  repeated UID uids = 2;
+  string inserter = 3;
+  string matcher = 4;
+  int32 mm = 5;
+  string ext = 99;
+}
+
+message UID {
+  string id = 1;
+  int32 atype = 2;
+  string ext = 99;
+}
+
+message Source {
+  int32 fd = 1;
+  string tid = 2;
+  string pchain = 3;
+  SupplyChain schain = 4;
+  string ext = 99;
+}
+
+message SupplyChain {
+  int32 complete = 1;
+  repeated SupplyChainNode nodes = 2;
+  string ver = 3;
+  string ext = 99;
+}
+
+message SupplyChainNode {
+  string asi = 1;
+  string sid = 2;
+  string rid = 3;
+  string name = 4;
+  string domain = 5;
+  int32 hp = 6;
+  string ext = 99;
+}
+
+message Regs {
+  int32 coppa = 1;
+  int32 gdpr = 2;
+  string us_privacy = 3;
+  string gpp = 4;
+  repeated int32 gpp_sid = 5;
+  string ext = 99;
+}
+
+message BidResponse {
+  string id = 1;
+  repeated SeatBid seatbid = 2;
+  string bidid = 3;
+  string cur = 4;
+  string customdata = 5;
+  int32 nbr = 6;
+  string ext = 99;
+}
+
+message SeatBid {
+  repeated Bid bid = 1;
+  string seat = 2;
+  int32 group = 3;
+  string ext = 99;
+}
+
+message Bid {
+  string id = 1;
+  string impid = 2;
+  double price = 3;
+  string nurl = 4;
+  string burl = 5;
+  string lurl = 6;
+  string adm = 7;
+  string adid = 8;
+  repeated string adomain = 9;
+  string bundle = 10;
+  string iurl = 11;
+  string cid = 12;
+  string crid = 13;
+  string tactic = 14;
+  int32 cattax = 15;
+  repeated string cat = 16;
+  repeated int32 attr = 17;
+  repeated int32 apis = 18;
+  int32 protocol = 19;
+  int32 qagmediarating = 20;
+  string language = 21;
+  string langb = 22;
+  string dealid = 23;
+  int32 w = 24;
+  int32 h = 25;
+  int32 wratio = 26;
+  int32 hratio = 27;
+  int32 exp = 28;
+  int32 dur = 29;
+  MarkupType mtype = 30;
+  int32 slotinpod = 31;
+  string ext = 99;
+}

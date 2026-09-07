@@ -1,0 +1,16 @@
+OakRTB OpenRTB Protocol
+Copyright 2026 oakrtb
+
+This project defines a machine-readable bidding protocol compatible with
+IAB Tech Lab OpenRTB 2.6.
+
+The object names, JSON field names, and protocol semantics follow the
+OpenRTB 2.6 specification published by IAB Tech Lab, which is licensed
+under Creative Commons Attribution 3.0:
+
+  https://github.com/InteractiveAdvertisingBureau/openrtb2.x
+  https://iabtechlab.com/standards/openrtb/
+
+Enumerated list values are aligned with AdCOM 1.0:
+
+  https://github.com/InteractiveAdvertisingBureau/AdCOM

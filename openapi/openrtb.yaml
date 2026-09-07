@@ -1,0 +1,128 @@
+openapi: 3.1.0
+info:
+  title: OakRTB OpenRTB Bidding API
+  version: 0.1.0
+  description: |
+    HTTP contract for OakRTB real-time bidding.
+
+    Compatible with IAB OpenRTB 2.6 JSON. Exchange POSTs a BidRequest;
+    bidder returns BidResponse (200), no-bid (204), or a BidResponse with `nbr`.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    url: https://github.com/oakrtb/openrtb
+
+servers:
+  - url: https://bidder.example.com
+    description: DSP / bidder endpoint
+
+paths:
+  /openrtb/v2/auction:
+    post:
+      operationId: auction
+      summary: Submit a bid request
+      description: |
+        The exchange sends one BidRequest per auction. `tmax` includes network
+        latency. Timed-out bids are treated as no-bid.
+      parameters:
+        - in: header
+          name: x-openrtb-version
+          required: false
+          schema:
+            type: string
+            example: "2.6"
+          description: OpenRTB protocol version of the request body.
+        - in: header
+          name: Content-Type
+          required: true
+          schema:
+            type: string
+            enum:
+              - application/json
+              - application/json; charset=utf-8
+        - in: header
+          name: Accept-Encoding
+          required: false
+          schema:
+            type: string
+            example: gzip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schema/jsonschema/bid-request.schema.json"
+            examples:
+              banner:
+                $ref: "#/components/examples/BannerBidRequest"
+      responses:
+        "200":
+          description: Bid or structured no-bid (`nbr`).
+          headers:
+            x-openrtb-version:
+              schema:
+                type: string
+                example: "2.6"
+            Content-Encoding:
+              schema:
+                type: string
+                example: gzip
+          content:
+            application/json:
+              schema:
+                $ref: "../schema/jsonschema/bid-response.schema.json"
+              examples:
+                bid:
+                  $ref: "#/components/examples/BannerBidResponse"
+                nbr:
+                  $ref: "#/components/examples/NoBidResponse"
+        "204":
+          description: No-bid with empty body.
+        "400":
+          description: Malformed or corrupt BidRequest.
+
+components:
+  examples:
+    BannerBidRequest:
+      summary: Simple 300x250 banner
+      value:
+        id: "80ce30c53c16e6ede735f123ef6e32361bfc7b22"
+        at: 1
+        tmax: 120
+        cur: ["USD"]
+        imp:
+          - id: "1"
+            bidfloor: 0.03
+            bidfloorcur: "USD"
+            banner:
+              w: 300
+              h: 250
+        site:
+          id: "102855"
+          domain: "www.example.com"
+          page: "https://www.example.com/article"
+    BannerBidResponse:
+      summary: Winning banner bid
+      value:
+        id: "80ce30c53c16e6ede735f123ef6e32361bfc7b22"
+        bidid: "abc123"
+        cur: "USD"
+        seatbid:
+          - seat: "512"
+            bid:
+              - id: "1"
+                impid: "1"
+                price: 1.23
+                adomain: ["advertiser.com"]
+                crid: "creative-9"
+                mtype: 1
+                w: 300
+                h: 250
+                adm: "<a href='https://advertiser.com'><img src='https://cdn.example/ad.png'/></a>"
+                nurl: "https://dsp.example/win?price=${AUCTION_PRICE}"
+    NoBidResponse:
+      summary: Structured no-bid
+      value:
+        id: "80ce30c53c16e6ede735f123ef6e32361bfc7b22"
+        nbr: 2

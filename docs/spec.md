@@ -1,0 +1,115 @@
+# 协议规范
+
+OakRTB 0.1.0 定义 Exchange（供给）与 Bidder（需求）之间的实时竞价接口。JSON 字段名、对象层次与语义对齐 IAB OpenRTB 2.6，便于对接现有 DSP / SSP。
+
+配套文档：
+
+- [transport.md](transport.md) — HTTP、压缩、超时
+- [objects.md](objects.md) — 对象与必填字段
+- [versioning.md](versioning.md) — 兼容策略
+
+机器可读定义：
+
+- `schema/jsonschema/bid-request.schema.json`
+- `schema/jsonschema/bid-response.schema.json`
+- `schema/jsonschema/native.schema.json`
+- `proto/oakrtb/v2/openrtb.proto`
+- `openapi/openrtb.yaml`
+
+## 角色
+
+| 术语 | 含义 |
+|---|---|
+| Exchange | 发起拍卖、广播 BidRequest、按拍卖规则选胜出者 |
+| Bidder | 接收 BidRequest、在 `tmax` 内返回 BidResponse |
+| Seat | Bidder 代理的广告主 / 代理商账户 |
+| Imp | 一次可售广告位 |
+| Deal | 买卖双方事先约定的私有交易条款 |
+
+## 对象树
+
+```
+BidRequest
+├── id, at, tmax, test, cur, wseat/bseat, bcat, badv
+├── imp[]                  必填，至少一个
+│   ├── banner | video | audio | native
+│   └── pmp.deals[]
+├── site | app | dooh      三选一
+├── device, user
+├── source.schain
+└── regs
+
+BidResponse
+├── id                     必须等于 BidRequest.id
+├── seatbid[].bid[]
+│   ├── impid, price, adm
+│   └── nurl / burl / lurl
+└── nbr                    仅用于结构化不竞价
+```
+
+`site`、`app`、`dooh` 不能同时出现。每个 `imp` 至少带一种广告形态；一条 Bid 只能对应其中一种，用 `mtype` 标明（1 banner / 2 video / 3 audio / 4 native）。
+
+## 必填规则
+
+BidRequest：
+
+- `id`、`imp`（长度 ≥ 1）
+- 每个 `imp.id`
+- 每个 `imp` 至少有 `banner`、`video`、`audio`、`native` 之一
+- `video.mimes`、`audio.mimes`、`native.request` 在对应形态下必填
+
+BidResponse：
+
+- `id`
+- 若出价：`seatbid` 至少 1 个，每个含至少 1 条 `bid`
+- 每条 `bid`：`id`、`impid`、`price`（CPM，必须 > 0）
+- `impid` 必须指向请求中某个 `imp.id`
+
+缺字段表示 **unknown**，不是默认 0（规范写明 default 的字段除外）。未知字段必须忽略。扩展放在 `ext`。
+
+## 拍卖与价格
+
+| `at` | 含义 |
+|---|---|
+| 1 | 一价：成交价 = 出价 |
+| 2 | 二价+（默认） |
+| 3 | 仅 Deal：`bidfloor` 即约定成交价 |
+| ≥ 500 | Exchange 自定义 |
+
+`price` 与 `bidfloor` 单位都是 **CPM**。实际成交的是单次曝光。处理金额时用十进制（例如 Java `BigDecimal`），不要用二进制浮点做账。
+
+`Deal.at` 可覆盖请求级 `at`。`pmp.private_auction = 1` 时只接受列出的 deal。
+
+## 素材与通知
+
+素材优先放在 `bid.adm`。若同时提供 `nurl` 响应体，以 `adm` 为准。
+
+Exchange 在 `nurl` / `burl` / `lurl` 以及 markup 中替换宏：
+
+| 宏 | 含义 |
+|---|---|
+| `${AUCTION_ID}` | BidRequest.id |
+| `${AUCTION_BID_ID}` | BidResponse.bidid |
+| `${AUCTION_IMP_ID}` | 中标 imp.id |
+| `${AUCTION_SEAT_ID}` | seat |
+| `${AUCTION_PRICE}` | 成交价（已含折扣） |
+| `${AUCTION_CURRENCY}` | 币种 |
+| `${AUCTION_MIN_TO_WIN}` | 赢或平所需最低价 |
+| `${AUCTION_LOSS}` | 丢单原因码 |
+
+`nurl` 只表示赢了拍卖，不等于可计费。视频计费以 VAST Impression 为准；`burl` 应在 Exchange 记账点由服务端触发。
+
+## Native
+
+`imp.native.request` 是 **JSON 字符串**，不是对象。1.1+ 根对象即 Native Markup Request（含 `assets[]`）。本仓库用 `native.schema.json` 校验解码后的内层 JSON。
+
+## 合规与供应链
+
+- `regs.coppa` / `regs.gdpr` / `regs.us_privacy` / `regs.gpp`
+- GDPR 同意串在 `user.consent`
+- `source.schain` 描述支付链路；`complete = 1` 表示从媒体主到本发送方节点齐全
+- `device.ifa` 为操作系统广告 ID；`user.eids` 为第三方身份（如 UID2）
+
+## 样例
+
+见 `examples/`。最小 Banner 请求只需要 `id` + 一个带 `banner` 的 `imp`。生产流量还应带 `site` 或 `app`、`device`、`source.schain`。
