@@ -74,16 +74,21 @@ fn compile(schema_str: &str, label: &str) -> JsValidator {
     let schema: Value = serde_json::from_str(schema_str).unwrap_or_else(|e| {
         panic!("invalid {label} schema: {e}");
     });
-    // Register sibling schemas for $ref resolution via retrieving
+    // 注册 sibling schema，供 $ref 离线解析。
     let openrtb: Value = serde_json::from_str(OPENRTB).expect("openrtb schema");
-    let resource = jsonschema::Resource::from_contents(openrtb).expect("openrtb resource");
+    let registry = jsonschema::Registry::new()
+        .add(
+            "https://github.com/oakrtb/openrtb/schema/jsonschema/openrtb.schema.json",
+            openrtb.clone(),
+        )
+        .unwrap_or_else(|e| panic!("register openrtb uri: {e}"))
+        .add("openrtb.schema.json", openrtb)
+        .unwrap_or_else(|e| panic!("register openrtb relative: {e}"))
+        .prepare()
+        .unwrap_or_else(|e| panic!("prepare registry: {e}"));
 
     jsonschema::options()
-        .with_resource(
-            "https://github.com/oakrtb/openrtb/schema/jsonschema/openrtb.schema.json",
-            resource.clone(),
-        )
-        .with_resource("openrtb.schema.json", resource)
+        .with_registry(&registry)
         .build(&schema)
         .unwrap_or_else(|e| panic!("compile {label}: {e}"))
 }
@@ -114,7 +119,7 @@ fn validate(data: &[u8], validator: &JsValidator, check_native: bool) -> Validat
         .iter_errors(&doc)
         .map(|e| ValidationError {
             code: classify(&e.to_string()),
-            path: pointer_path(e.instance_path.to_string()),
+            path: pointer_path(e.instance_path().to_string()),
             message: e.to_string(),
         })
         .collect();
@@ -183,7 +188,7 @@ fn validate_native_embedded(doc: &Value) -> Vec<ValidationError> {
                 code: "native".into(),
                 path: format!(
                     "/imp/{i}/native/request{}",
-                    pointer_path(e.instance_path.to_string())
+                    pointer_path(e.instance_path().to_string())
                 ),
                 message: format!("native.request: {e}"),
             });

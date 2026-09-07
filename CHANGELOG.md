@@ -20,6 +20,9 @@
 - 文档：`spec.md` 必填与 schema 对齐（`at`/`cur`）；`inspect-usage.md` 增加与 OpenRTB 2.6 接入对照（204 / OakRTB profile / tmax）。
 - **Breaking（SDK API）**：`inspect.Format` → `MarkupMask`（字段 `formats`→`markup`）；`match`/`bidmatch` → `fit`（`Fit` / `FitResult`）；`inspect.Channel` → `Inventory`（字段 `channel`→`inventory`）。消除与 proto `Banner.Format` / `Content.Channel` 撞名，并明确 fit≠广告匹配引擎。
 - Go / Java / Rust SDK：可选 **Fit** 层（原 Match）（`impReady` / `bidFit` / `responseFit`）— 组标前形态就绪与 bid↔imp 一致性；ERROR/WARN 软结果，不进 LightGate。
+- Java SDK 依赖升级到主流稳定线：Protobuf **4.36.1**、Jackson **2.22.2**、networknt json-schema-validator **2.0.7**（Jackson 2 兼容线）、JUnit **5.14.4**；`Validator` 对齐 networknt 2.x `SchemaRegistry` API。
+- Go SDK：`go 1.25`、`jsonschema/v6` **v6.0.3**、`golang.org/x/text` **v0.41.0**（`protobuf` 已为 **v1.36.12**）。
+- Rust SDK：`jsonschema` **0.55.1**、`prost`/`prost-build` **0.14.4**、`serde` **1.0.229**、`serde_json` **1.0.151**、`thiserror` **2.0.20**、`walkdir` **2.5.0**；`validate` 对齐 jsonschema `Registry` API。
 
 ## 0.1.0 — 2026-09-07
 
