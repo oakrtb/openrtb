@@ -9,27 +9,47 @@
   <version>0.2.0</version>
   <packaging>jar</packaging>
   <name>OakRTB SDK</name>
-  <description>OakRTB OpenRTB models and JSON Schema validation</description>
+  <description>OakRTB OpenRTB models, builders, view/fit, and JSON Schema validation</description>
   <url>https://github.com/oakrtb/openrtb</url>
+  <inceptionYear>2026</inceptionYear>
 
   <licenses>
     <license>
-      <name>Apache-2.0</name>
-      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
     </license>
   </licenses>
+
+  <developers>
+    <developer>
+      <name>oakrtb</name>
+      <organization>oakrtb</organization>
+      <organizationUrl>https://github.com/oakrtb</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/oakrtb/openrtb.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/oakrtb/openrtb.git</developerConnection>
+    <url>https://github.com/oakrtb/openrtb</url>
+    <tag>v0.2.0</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/oakrtb/openrtb/issues</url>
+  </issueManagement>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
-    <!-- Google Protobuf：当前稳定主线 4.x -->
     <protobuf.version>4.36.1</protobuf.version>
-    <!-- FasterXML Jackson 2.x（生态最稳；3.x 另线） -->
     <jackson.version>2.22.2</jackson.version>
-    <!-- networknt：Java JSON Schema 主流实现；2.x 对齐 Jackson 2 -->
     <json-schema-validator.version>2.0.7</json-schema-validator.version>
-    <!-- JUnit 5 稳定线（6.x 另线） -->
     <junit.version>5.14.4</junit.version>
+    <!-- Prefer vendored proto (publishable); monorepo override via -DprotoSourceRoot=... -->
+    <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
   </properties>
 
   <dependencyManagement>
@@ -94,40 +114,14 @@
           <release>${maven.compiler.release}</release>
         </configuration>
       </plugin>
-      <!-- 权威 schema 在仓库根 schema/jsonschema/；打包时拷入 classpath -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>3.3.1</version>
-        <executions>
-          <execution>
-            <id>copy-json-schemas</id>
-            <phase>process-resources</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.outputDirectory}/schema/jsonschema</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${project.basedir}/../../schema/jsonschema</directory>
-                  <includes>
-                    <include>*.json</include>
-                  </includes>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <!-- xolstice：OpenRTB 生态常用；与 Google protoc 4.x 制品对齐 -->
+      <!-- JSON schemas: committed under src/main/resources (make sync-schemas). -->
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
         <version>0.6.1</version>
         <configuration>
           <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
-          <protoSourceRoot>${project.basedir}/../../proto</protoSourceRoot>
+          <protoSourceRoot>${protoSourceRoot}</protoSourceRoot>
           <includes>
             <include>oakrtb/v2/openrtb.proto</include>
           </includes>
@@ -175,4 +169,75 @@
       </plugin>
     </plugins>
   </build>
+
+  <!--
+    Maven Central (Sonatype Central Portal).
+    Requires ~/.m2/settings.xml server id "central" + GPG key.
+    See docs/publishing.md
+  -->
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.11.2</version>
+            <configuration>
+              <doclint>none</doclint>
+              <failOnError>false</failOnError>
+              <source>${maven.compiler.release}</source>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.7</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.8.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>true</autoPublish>
+              <waitUntil>published</waitUntil>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

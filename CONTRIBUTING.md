@@ -17,14 +17,16 @@ make proto-check
 make sdk-test          # 或 sdk-test-go / sdk-test-java / sdk-test-rust
 ```
 
-改 `schema/jsonschema/` 后必须：
+改 `schema/jsonschema/` 或 `proto/` 后必须：
 
 ```bash
-make sync-schemas      # 刷新 Go embed 副本
+make sync-schemas      # 刷新 Go / Java / Rust vendored 副本
 make sdk-test
 ```
 
-并提交更新后的 `sdk/go/schema/schemas/*.json`。
+并提交更新后的 `sdk/go/schema/schemas/`、`sdk/java/src/main/{resources,proto}/`、`sdk/rust/{schemas,proto}/`。
+
+发包（crates.io / Maven Central）见 [docs/publishing.md](docs/publishing.md)。
 
 ## 改什么、怎么改
 
