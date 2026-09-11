@@ -135,21 +135,22 @@ Schema 仅在需要时使用，例如：`buildValidated()`、本地夹具、或 
 
 ## 构建
 
-权威 JSON Schema 只维护在仓库根 `schema/jsonschema/`。各语言摄入方式：
+权威 JSON Schema 只维护在仓库根 `schema/jsonschema/`。各语言提交 **vendored 副本**（`make sync-schemas`），以便 `go get` / crates.io / Maven Central 发布：
 
 | 语言 | 摄入方式 |
 |---|---|
-| Java | `maven-resources-plugin` → jar（构建时拷入，不入库） |
-| Rust | `build.rs` → `OUT_DIR`（构建时拷入，不入库） |
-| Go | `make sync-schemas` → 提交 `sdk/go/schema/schemas/*.json`（`//go:embed`，`go get` 可用） |
+| Go | `sdk/go/schema/schemas/*.json`（`//go:embed`） |
+| Java | `sdk/java/src/main/resources/schema/jsonschema/` + `src/main/proto/` |
+| Rust | `sdk/rust/schemas/` + `sdk/rust/proto/`（`build.rs` 嵌入） |
 
 ```bash
-make sync-schemas  # 改 schema 后刷新 Go 副本并提交
+make sync-schemas  # 改 schema/proto 后刷新三语言副本并提交
 make proto-go
 make proto-java
 make proto-rust
 make sdk-test
 make jar
+# 发布步骤见 docs/publishing.md
 ```
 
 ## 怎么按广告类型组请求

@@ -43,4 +43,5 @@ OakRTB 版本写在 `VERSION`，遵循 SemVer。
 4. `docs/objects.md` / `docs/spec.md` / `docs/transport.md`
 5. `examples/bid-request|bid-response/` 与 `testdata/invalid/`
 6. `CHANGELOG.md`
-7. 若改了 schema：`make sync-schemas`（刷新 Go `sdk/go/schema/schemas/*.json`）并跑 `make sdk-test`；提交更新后的 Go 副本
+7. 若改了 schema 或 proto：`make sync-schemas`（刷新 Go/Java/Rust vendored 副本）并跑 `make sdk-test`；提交更新后的副本
+8. 发包步骤见 [publishing.md](publishing.md)

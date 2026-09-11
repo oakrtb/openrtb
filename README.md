@@ -15,21 +15,15 @@ It does **not** implement an SSP, DSP, or auction engine. It is an **independent
 ### Install SDKs
 
 ```bash
-# Go
+# Go (repo tag v0.2.0)
 go get github.com/oakrtb/openrtb/sdk/go@v0.2.0
 
-# Rust
-cargo add oakrtb-sdk@0.2.0   # after crates.io publish
-
-# Java (Maven) — after Central publish
-# <dependency>
-#   <groupId>com.oakrtb</groupId>
-#   <artifactId>oakrtb-sdk</artifactId>
-#   <version>0.2.0</version>
-# </dependency>
+# Rust / Java — see docs/publishing.md; until registries are live:
+cargo add oakrtb-sdk@0.2.0   # after crates.io
+make jar                     # local Java jars under gen/java/dist/ (JDK 21)
 ```
 
-Until Maven Central / crates.io are live, clone this repo and depend on the `sdk/` tree, or use `make jar` for local Java artifacts under `gen/java/dist/`.
+Until Maven Central / crates.io are live, clone this repo and depend on the `sdk/` tree, or use `make jar`. Details: [docs/publishing.md](docs/publishing.md).
 
 Hot path: **build → view (LightGate) → fit**; full JSON Schema stays off the hot path. See [docs/sdk.md](docs/sdk.md) and [docs/view-usage.md](docs/view-usage.md).
 
@@ -78,11 +72,11 @@ go get github.com/oakrtb/openrtb/sdk/go@v0.2.0
 # Rust（crates.io 发布后）
 cargo add oakrtb-sdk@0.2.0
 
-# Java：Maven Central 发布前可用本地包
+# Java：Maven Central 发布前可用本地包（见 docs/publishing.md）
 make jar   # → gen/java/dist/oakrtb-sdk-0.2.0*.jar（JDK 21）
 ```
 
-热路径：`build → view（LightGate）→ fit`；完整 schema 用于 `buildValidated` / 夹具 / 可选边界 400，勿与 LightGate 叠跑。
+热路径：`build → view（LightGate）→ fit`；完整 schema 用于 `buildValidated` / 夹具 / 可选边界 400，勿与 LightGate 叠跑。发包步骤见 [docs/publishing.md](docs/publishing.md)。
 
 ## 一次拍卖
 

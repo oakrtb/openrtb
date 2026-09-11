@@ -3,9 +3,24 @@ name = "oakrtb-sdk"
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
-description = "OakRTB OpenRTB models and JSON Schema validation"
+description = "OakRTB OpenRTB models, builders, view/fit, and JSON Schema validation"
 license = "Apache-2.0"
 repository = "https://github.com/oakrtb/openrtb"
+homepage = "https://github.com/oakrtb/openrtb"
+documentation = "https://docs.rs/oakrtb-sdk"
+readme = "README.md"
+keywords = ["openrtb", "iab", "advertising", "rtb", "json-schema"]
+categories = ["api-bindings", "encoding", "parser-implementations"]
+include = [
+  "src/**/*",
+  "build.rs",
+  "Cargo.toml",
+  "README.md",
+  "LICENSE",
+  "NOTICE",
+  "schemas/*.json",
+  "proto/**/*.proto",
+]
 
 [dependencies]
 serde = { version = "1.0.229", features = ["derive"] }

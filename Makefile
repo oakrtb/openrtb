@@ -1,5 +1,6 @@
 .PHONY: validate install-dev sync-schemas proto-check proto-go proto-java proto-rust proto \
-	sdk-test sdk-test-go sdk-test-java sdk-test-rust jar
+	sdk-test sdk-test-go sdk-test-java sdk-test-rust jar \
+	publish-rust-dry publish-java-dry
 
 PROTO := proto/oakrtb/v2/openrtb.proto
 VERSION := $(shell cat VERSION)
@@ -11,10 +12,18 @@ install-dev:
 validate:
 	python3 scripts/validate.py
 
-# 将权威 schema 同步为 Go 模块内入库副本（Java/Rust 构建时各自拷入）。
+# 权威 schema/proto → 各语言 vendored 副本（包发布 / go get / crates.io / Maven 需要）。
 sync-schemas:
 	@mkdir -p sdk/go/schema/schemas
+	@mkdir -p sdk/java/src/main/resources/schema/jsonschema
+	@mkdir -p sdk/java/src/main/proto/oakrtb/v2
+	@mkdir -p sdk/rust/schemas sdk/rust/proto/oakrtb/v2
 	cp schema/jsonschema/*.json sdk/go/schema/schemas/
+	cp schema/jsonschema/*.json sdk/java/src/main/resources/schema/jsonschema/
+	cp schema/jsonschema/*.json sdk/rust/schemas/
+	cp $(PROTO) sdk/java/src/main/proto/oakrtb/v2/
+	cp $(PROTO) sdk/rust/proto/oakrtb/v2/
+	@echo "synced schema + proto into sdk/{go,java,rust}"
 
 # Syntax-check protobuf (no language plugins required).
 proto-check:
@@ -60,3 +69,12 @@ jar:
 	cp sdk/java/target/oakrtb-sdk-$(VERSION).jar gen/java/dist/
 	cp sdk/java/target/oakrtb-sdk-$(VERSION)-all.jar gen/java/dist/
 	@ls -la gen/java/dist/
+
+# Dry-run package publish (no upload). See docs/publishing.md
+publish-rust-dry: sync-schemas
+	cd sdk/rust && cargo publish --dry-run --allow-dirty
+
+publish-java-dry: sync-schemas
+	cd sdk/java && mvn -q -Prelease package -DskipTests
+	@echo "Built release artifacts under sdk/java/target (sources/javadoc/gpg need keys for full deploy)"
+
