@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
-	"github.com/oakrtb/openrtb/sdk/go/validate"
+	"github.com/oakrtb/openrtb/sdk/go/schema"
 )
 
 // BidRequestBuilder 组装带库存与展示位的 BidRequest。
@@ -225,12 +225,12 @@ func (b *BidRequestBuilder) BuildJSON() ([]byte, error) {
 }
 
 // BuildValidated 构建、序列化并执行 JSON Schema 校验。
-func (b *BidRequestBuilder) BuildValidated() ([]byte, validate.ValidationResult, error) {
+func (b *BidRequestBuilder) BuildValidated() ([]byte, schema.Report, error) {
 	raw, err := b.BuildJSON()
 	if err != nil {
-		return nil, validate.ValidationResult{}, err
+		return nil, schema.Report{}, err
 	}
-	return raw, validate.ValidateBidRequest(raw), nil
+	return raw, schema.Request(raw), nil
 }
 
 func checkImp(imp *openrtb.Imp, i int) error {

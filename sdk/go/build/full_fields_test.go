@@ -6,7 +6,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
-	"github.com/oakrtb/openrtb/sdk/go/validate"
+	"github.com/oakrtb/openrtb/sdk/go/schema"
 )
 
 func TestFullBidRequestApp_AllFieldsSet(t *testing.T) {
@@ -23,7 +23,7 @@ func TestFullBidRequestApp_AllFieldsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := validate.ValidateBidRequest(raw)
+	result := schema.Request(raw)
 	if !result.Ok {
 		t.Fatalf("schema: %+v\njson=%s", result.Errors, raw)
 	}
@@ -47,7 +47,7 @@ func TestFullBidRequestSite_AllFieldsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r := validate.ValidateBidRequest(raw); !r.Ok {
+	if r := schema.Request(raw); !r.Ok {
 		t.Fatalf("schema: %+v", r.Errors)
 	}
 }
@@ -65,7 +65,7 @@ func TestFullBidRequestDooh_AllFieldsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r := validate.ValidateBidRequest(raw); !r.Ok {
+	if r := schema.Request(raw); !r.Ok {
 		t.Fatalf("schema: %+v", r.Errors)
 	}
 }
@@ -84,7 +84,7 @@ func TestFullBidResponse_AllFieldsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := validate.ValidateBidResponse(raw)
+	result := schema.Response(raw)
 	if !result.Ok {
 		t.Fatalf("schema: %+v\njson=%s", result.Errors, raw)
 	}

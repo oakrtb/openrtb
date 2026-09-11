@@ -1,6 +1,6 @@
 use serde_json::{json, Map, Value};
 
-use crate::validate::validate_bid_request;
+use crate::schema::request;
 
 use super::response::ValidatedJson;
 
@@ -216,7 +216,7 @@ impl BidRequestBuilder {
     /// 构建 JSON 并运行 BidRequest Schema 校验（含 embedded native）。
     pub fn build_validated(self) -> Result<ValidatedJson, String> {
         let json = self.build_json()?;
-        let result = validate_bid_request(&json);
+        let result = request(&json);
         Ok(ValidatedJson { json, result })
     }
 }
@@ -602,7 +602,7 @@ impl AppBuilder {
         self.o.insert("publisher".into(), p);
         self
     }
-    /// 设置 Content 子对象（**非** [`crate::inspect::Inventory`]）。
+    /// 设置 Content 子对象（**非** [`crate::view::Inventory`]）。
     pub fn content(mut self, c: Value) -> Self {
         self.o.insert("content".into(), c);
         self
@@ -742,7 +742,7 @@ impl PublisherBuilder {
     }
 }
 
-/// Content 对象 Builder（内容元数据；**非** [`crate::inspect::Inventory`]）。
+/// Content 对象 Builder（内容元数据；**非** [`crate::view::Inventory`]）。
 #[derive(Clone, Debug, Default)]
 pub struct ContentBuilder {
     o: Map<String, Value>,

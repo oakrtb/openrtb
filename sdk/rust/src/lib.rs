@@ -1,15 +1,15 @@
-//! OakRTB Rust SDK：基于 prost 的 protobuf 模型、JSON Schema 校验、Builder、Inspect 与 Fit。
+//! OakRTB Rust SDK：基于 prost 的 protobuf 模型、JSON Schema 校验、Builder、View 与 Fit。
 //!
-//! - [`validate`]：权威 JSON Schema 校验
+//! - [`schema`]：JSON Schema 合同校验（非热路径必经）
 //! - [`build`]：流式 Builder 生成 OpenRTB JSON
-//! - [`inspect`]：轻量 BidRequest/BidResponse 解析与视图（含 [`inspect::MarkupMask`]、[`inspect::Inventory`]）
-//! - [`fit`]：请求快照与出价之间的软匹配检查（非 Schema、非 LightGate）
+//! - [`view`]：轻量 BidRequest/BidResponse 解析与视图（含 LightGate）
+//! - [`fit`]：形态就绪与 bid↔imp 软契合（非 Schema、非 LightGate）
 //! - [`proto`]：生成的 protobuf 消息（`oakrtb.v2`）
 
 pub mod build;
 pub mod fit;
-pub mod inspect;
-pub mod validate;
+pub mod view;
+pub mod schema;
 
 /// 由 build.rs 生成的 protobuf 消息（`oakrtb.v2` 包）。
 pub mod proto {

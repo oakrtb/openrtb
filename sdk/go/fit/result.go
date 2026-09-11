@@ -21,6 +21,7 @@ const (
 	CodeVideoDurationUnset   = "VIDEO_DURATION_UNSET"
 	CodeVideoProtocolsUnset  = "VIDEO_PROTOCOLS_UNSET"
 
+	CodeMalformed       = "MALFORMED"
 	CodeImpNotFound     = "IMP_NOT_FOUND"
 	CodeMtypeRequired   = "MTYPE_REQUIRED"
 	CodeMtypeMismatch   = "MTYPE_MISMATCH"

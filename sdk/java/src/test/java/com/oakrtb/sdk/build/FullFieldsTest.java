@@ -8,8 +8,8 @@ import com.oakrtb.openrtb.v2.BidResponse;
 import com.oakrtb.openrtb.v2.Dooh;
 import com.oakrtb.openrtb.v2.MarkupType;
 import com.oakrtb.openrtb.v2.Site;
-import com.oakrtb.sdk.validate.ValidationResult;
-import com.oakrtb.sdk.validate.Validator;
+import com.oakrtb.sdk.schema.Report;
+import com.oakrtb.sdk.schema.Schema;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -44,7 +44,7 @@ class FullFieldsTest {
     assertTrue(unset.isEmpty(), () -> "unset: " + unset);
 
     byte[] json = Json.toJsonBytes(req);
-    ValidationResult result = Validator.validateBidRequest(json);
+    Report result = Schema.request(json);
     assertTrue(result.isOk(), result::toJson);
 
     BidRequest back = Json.parseBidRequest(new String(json));
@@ -64,7 +64,7 @@ class FullFieldsTest {
     b.setSite(site);
     BidRequest req = b.build();
     byte[] json = Json.toJsonBytes(req);
-    assertTrue(Validator.validateBidRequest(json).isOk(), () -> Validator.validateBidRequest(json).toJson());
+    assertTrue(Schema.request(json).isOk(), () -> Schema.request(json).toJson());
     assertTrue(Json.parseBidRequest(new String(json)).hasSite());
   }
 
@@ -77,7 +77,7 @@ class FullFieldsTest {
     b.setDooh(dooh);
     BidRequest req = b.build();
     byte[] json = Json.toJsonBytes(req);
-    assertTrue(Validator.validateBidRequest(json).isOk(), () -> Validator.validateBidRequest(json).toJson());
+    assertTrue(Schema.request(json).isOk(), () -> Schema.request(json).toJson());
     assertTrue(Json.parseBidRequest(new String(json)).hasDooh());
   }
 
@@ -90,7 +90,7 @@ class FullFieldsTest {
     assertTrue(unset.isEmpty(), () -> "unset: " + unset);
 
     byte[] json = Json.toJsonBytes(res);
-    ValidationResult result = Validator.validateBidResponse(json);
+    Report result = Schema.response(json);
     assertTrue(result.isOk(), result::toJson);
 
     BidResponse back = Json.parseBidResponse(new String(json));
@@ -102,16 +102,16 @@ class FullFieldsTest {
   void goldenFullFixturesValidate() throws Exception {
     Path root = repoRoot().resolve("testdata").resolve("full");
     assertTrue(
-        Validator.validateBidRequest(Files.readAllBytes(root.resolve("bid-request/app.json")))
+        Schema.request(Files.readAllBytes(root.resolve("bid-request/app.json")))
             .isOk());
     assertTrue(
-        Validator.validateBidRequest(Files.readAllBytes(root.resolve("bid-request/site.json")))
+        Schema.request(Files.readAllBytes(root.resolve("bid-request/site.json")))
             .isOk());
     assertTrue(
-        Validator.validateBidRequest(Files.readAllBytes(root.resolve("bid-request/dooh.json")))
+        Schema.request(Files.readAllBytes(root.resolve("bid-request/dooh.json")))
             .isOk());
     assertTrue(
-        Validator.validateBidResponse(Files.readAllBytes(root.resolve("bid-response/full.json")))
+        Schema.response(Files.readAllBytes(root.resolve("bid-response/full.json")))
             .isOk());
   }
 

@@ -14,8 +14,8 @@ https://github.com/oakrtb/openrtb
 | JSON 对象 | BidRequest / BidResponse 及全部子对象 | [schema/jsonschema](schema/jsonschema)、[docs/objects.md](docs/objects.md) |
 | Native | `imp.native.request` 内嵌的 Native 1.2 | [schema/jsonschema/native.schema.json](schema/jsonschema/native.schema.json) |
 | 二进制 | 与 JSON 字段同名的 protobuf | [proto/oakrtb/v2/openrtb.proto](proto/oakrtb/v2/openrtb.proto) |
-| SDK | Go / Java / Rust 模型 + 构建器 + inspect 读模型 + fit 契合检查 + `ValidationResult` | [docs/sdk.md](docs/sdk.md)、[docs/inspect-usage.md](docs/inspect-usage.md)、[sdk/](sdk/) |
-| 校验失败体 | 统一 `ValidationResult` JSON（建议作 HTTP 400） | [schema/jsonschema/validation-result.schema.json](schema/jsonschema/validation-result.schema.json) |
+| SDK | Go / Java / Rust 模型 + 构建器 + view 读模型 + fit 契合检查 + `Report`（`schema` 模块） | [docs/sdk.md](docs/sdk.md)、[docs/view-usage.md](docs/view-usage.md)、[sdk/](sdk/) |
+| 校验失败体 | 统一 `Report` JSON（形状见 `validation-result.schema.json`；建议作 HTTP 400） | [schema/jsonschema/validation-result.schema.json](schema/jsonschema/validation-result.schema.json) |
 
 权威顺序：**JSON Schema 为准**。OpenAPI 描述 HTTP 面；protobuf 是可选编码。文档解释语义。
 
@@ -34,7 +34,7 @@ Publisher ──► Exchange ──POST /openrtb/v2/auction──► Bidder
 - `200` + `seatbid`：出价
 - `204`：不竞价
 - `200` + `nbr`：不竞价并带原因
-- `400`：报文无法解析或未通过 schema 校验（body 为 `ValidationResult`）
+- `400`：报文无法解析，或（可选）未通过边界 schema 校验（body 为 `Report` JSON）。热路径结构门禁用 LightGate，勿与 schema 叠跑
 
 完整语义见 [docs/spec.md](docs/spec.md)。
 

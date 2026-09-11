@@ -3,7 +3,7 @@ package com.oakrtb.sdk.build;
 import com.oakrtb.openrtb.v2.Bid;
 import com.oakrtb.openrtb.v2.BidResponse;
 import com.oakrtb.openrtb.v2.MarkupType;
-import com.oakrtb.sdk.validate.ValidationResult;
+import com.oakrtb.sdk.schema.Report;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

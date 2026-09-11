@@ -1,18 +1,16 @@
 package com.oakrtb.sdk.build;
 
-import com.oakrtb.sdk.validate.ValidationResult;
+import com.oakrtb.sdk.schema.Report;
 
 /**
  * {@link #buildValidated()} 的返回封装：OpenRTB JSON 字节与 Schema 校验结果。
  *
- * <p>适用于构建后立即判断 payload 是否可发送或需修正。
- *
  * @param json 序列化后的 JSON 字节
- * @param result JSON Schema 校验结果
+ * @param result Schema 校验报告
  */
-public record ValidatedPayload(byte[] json, ValidationResult result) {
+public record ValidatedPayload(byte[] json, Report result) {
   /**
-   * 校验是否通过（{@link ValidationResult#isOk()} 为 true）。
+   * 校验是否通过（{@link Report#isOk()} 为 true）。
    *
    * @return 通过时为 {@code true}
    */

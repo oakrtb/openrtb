@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
-	"github.com/oakrtb/openrtb/sdk/go/validate"
+	"github.com/oakrtb/openrtb/sdk/go/schema"
 )
 
 // BidResponseBuilder 组装 BidResponse（出价或结构化 no-bid）。
@@ -119,12 +119,12 @@ func (b *BidResponseBuilder) BuildJSON() ([]byte, error) {
 }
 
 // BuildValidated 构建、序列化并执行 JSON Schema 校验。
-func (b *BidResponseBuilder) BuildValidated() ([]byte, validate.ValidationResult, error) {
+func (b *BidResponseBuilder) BuildValidated() ([]byte, schema.Report, error) {
 	raw, err := b.BuildJSON()
 	if err != nil {
-		return nil, validate.ValidationResult{}, err
+		return nil, schema.Report{}, err
 	}
-	return raw, validate.ValidateBidResponse(raw), nil
+	return raw, schema.Response(raw), nil
 }
 
 // --- Bid factory -------------------------------------------------------------

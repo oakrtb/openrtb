@@ -6,7 +6,7 @@ OakRTB 0.2.0 定义 Exchange（供给）与 Bidder（需求）之间的实时竞
 
 - [transport.md](transport.md) — HTTP、压缩、超时
 - [objects.md](objects.md) — 对象与必填字段
-- [inspect-usage.md](inspect-usage.md) — SDK inspect / Pipeline 使用与 2.6 接入对照
+- [view-usage.md](view-usage.md) — SDK view / Pipeline 使用与 2.6 接入对照
 - [versioning.md](versioning.md) — 兼容策略
 
 机器可读定义：

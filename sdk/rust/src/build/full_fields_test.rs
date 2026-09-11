@@ -1,4 +1,4 @@
-use crate::validate::{validate_bid_request, validate_bid_response};
+use crate::schema::{request, response};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ fn load(name: &str) -> Vec<u8> {
 #[test]
 fn full_bid_request_app_sets_all_major_objects() {
     let raw = load("bid-request/app.json");
-    let result = validate_bid_request(&raw);
+    let result = request(&raw);
     assert!(result.ok, "{:?}", result.errors);
 
     let v: Value = serde_json::from_slice(&raw).unwrap();
@@ -57,7 +57,7 @@ fn full_bid_request_app_sets_all_major_objects() {
 fn full_bid_request_site_and_dooh_validate() {
     for name in ["bid-request/site.json", "bid-request/dooh.json"] {
         let raw = load(name);
-        let result = validate_bid_request(&raw);
+        let result = request(&raw);
         assert!(result.ok, "{name}: {:?}", result.errors);
     }
 }
@@ -65,7 +65,7 @@ fn full_bid_request_site_and_dooh_validate() {
 #[test]
 fn full_bid_response_sets_all_fields() {
     let raw = load("bid-response/full.json");
-    let result = validate_bid_response(&raw);
+    let result = response(&raw);
     assert!(result.ok, "{:?}", result.errors);
 
     let v: Value = serde_json::from_slice(&raw).unwrap();

@@ -9,7 +9,8 @@ import com.oakrtb.openrtb.v2.Regs;
 import com.oakrtb.openrtb.v2.Site;
 import com.oakrtb.openrtb.v2.Source;
 import com.oakrtb.openrtb.v2.User;
-import com.oakrtb.sdk.validate.ValidationResult;
+import com.oakrtb.sdk.schema.Report;
+import com.oakrtb.sdk.schema.Schema;
 
 import java.util.Objects;
 
@@ -263,7 +264,7 @@ public final class BidRequestBuilder {
    */
   public ValidatedPayload buildValidated() {
     byte[] json = buildJson();
-    return new ValidatedPayload(json, ValidatorBridge.request(json));
+    return new ValidatedPayload(json, Schema.request(json));
   }
 
   private static void checkImp(Imp imp, int i) {
@@ -298,15 +299,6 @@ public final class BidRequestBuilder {
     }
     if (formats == 0) {
       throw new IllegalStateException("imp[" + i + "] needs banner, video, audio, or native");
-    }
-  }
-
-  /** Package-private bridge to avoid circular import naming in docs. */
-  static final class ValidatorBridge {
-    private ValidatorBridge() {}
-
-    static ValidationResult request(byte[] json) {
-      return com.oakrtb.sdk.validate.Validator.validateBidRequest(json);
     }
   }
 }
