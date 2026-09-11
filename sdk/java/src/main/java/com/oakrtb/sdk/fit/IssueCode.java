@@ -25,6 +25,8 @@ public final class IssueCode {
   /** Video 未设置 protocols（警告）。 */
   public static final String VIDEO_PROTOCOLS_UNSET = "VIDEO_PROTOCOLS_UNSET";
 
+  /** 响应/载荷结构无法解析（如非 JSON object）。 */
+  public static final String MALFORMED = "MALFORMED";
   /** bid.impid 在请求中不存在。 */
   public static final String IMP_NOT_FOUND = "IMP_NOT_FOUND";
   /** 多格式 Imp 须指定 Bid.mtype。 */

@@ -1,7 +1,7 @@
 use serde_json::{json, Map, Value};
 
-use crate::validate::validate_bid_response;
-use crate::validate::ValidationResult;
+use crate::schema::response;
+use crate::schema::Report;
 
 /// JSON 字节及其 Schema 校验结果。
 #[derive(Debug)]
@@ -9,7 +9,7 @@ pub struct ValidatedJson {
     /// 序列化后的 JSON 字节。
     pub json: Vec<u8>,
     /// Schema 校验结果。
-    pub result: ValidationResult,
+    pub result: Report,
 }
 
 impl ValidatedJson {
@@ -143,7 +143,7 @@ impl BidResponseBuilder {
     /// 构建 JSON 并运行 BidResponse Schema 校验。
     pub fn build_validated(self) -> Result<ValidatedJson, String> {
         let json = self.build_json()?;
-        let result = validate_bid_response(&json);
+        let result = response(&json);
         Ok(ValidatedJson { json, result })
     }
 }

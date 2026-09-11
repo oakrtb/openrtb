@@ -7,10 +7,10 @@ import com.oakrtb.openrtb.v2.BidResponse;
 import com.oakrtb.openrtb.v2.Native;
 import com.oakrtb.openrtb.v2.SeatBid;
 import com.oakrtb.openrtb.v2.Video;
-import com.oakrtb.sdk.inspect.MarkupMask;
-import com.oakrtb.sdk.inspect.RequestInspect;
-import com.oakrtb.sdk.inspect.RequestPipeline;
-import com.oakrtb.sdk.inspect.ResponseInspect;
+import com.oakrtb.sdk.view.MarkupMask;
+import com.oakrtb.sdk.view.RequestViews;
+import com.oakrtb.sdk.view.RequestPipeline;
+import com.oakrtb.sdk.view.ResponseViews;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,10 +21,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * RequestInspect 与 ResponseInspect 之间的可选 bid↔request 一致性检查。
+ * RequestViews 与 ResponseViews 之间的可选 bid↔request 一致性检查。
  *
- * <p>非 JSON Schema，也非 LightGate；返回软性 {@link FitResult}（不抛异常）。
- * 调用方自行决定是否因 ERROR 拒绝或处理 WARN。
+ * <p>非 JSON Schema，也非 LightGate；返回软性 {@link FitResult}。{@code null} 参数抛 NPE；其余不因业务不匹配抛异常。
+ * {@link FitResult#ok()} 仅表示无 ERROR；WARN（低价/屏蔽/超时等）仍可能 ok。
  */
 public final class Fit {
   private Fit() {}
@@ -36,11 +36,11 @@ public final class Fit {
    * @param mtype OpenRTB mtype（1–4）
    * @return Fit 结果
    */
-  public static FitResult impReady(RequestInspect.ImpView imp, int mtype) {
+  public static FitResult impReady(RequestViews.ImpView imp, int mtype) {
     Objects.requireNonNull(imp, "imp");
     List<FitIssue> issues = new ArrayList<>();
     String path = "imp[" + imp.id() + "]";
-    MarkupMask chosen = ResponseInspect.markupFromMtypeValue(mtype);
+    MarkupMask chosen = ResponseViews.markupFromMtypeValue(mtype);
     if (mtype < 1 || mtype > 4) {
       issues.add(
           new FitIssue(
@@ -54,13 +54,13 @@ public final class Fit {
   }
 
   /**
-   * 与 {@link #impReady(RequestInspect.ImpView, int)} 相同，但使用单 bit {@link MarkupMask}。
+   * 与 {@link #impReady(RequestViews.ImpView, int)} 相同，但使用单 bit {@link MarkupMask}。
    *
    * @param imp Imp 视图
    * @param chosen 须恰好一种格式的掩码
    * @return Fit 结果
    */
-  public static FitResult impReady(RequestInspect.ImpView imp, MarkupMask chosen) {
+  public static FitResult impReady(RequestViews.ImpView imp, MarkupMask chosen) {
     Objects.requireNonNull(imp, "imp");
     Objects.requireNonNull(chosen, "chosen");
     List<FitIssue> issues = new ArrayList<>();
@@ -78,7 +78,7 @@ public final class Fit {
   }
 
   private static FitResult impReadyChosen(
-      RequestInspect.ImpView imp, MarkupMask chosen, String path, List<FitIssue> issues) {
+      RequestViews.ImpView imp, MarkupMask chosen, String path, List<FitIssue> issues) {
     if (!imp.markup().has(chosen.bits())) {
       issues.add(
           new FitIssue(
@@ -155,14 +155,14 @@ public final class Fit {
   }
 
   /**
-   * 将单条 Bid 与请求快照做 Fit（不含响应级货币检查）。
+   * 将单条 Bid 与请求快照做 Fit。无响应货币时跳过底价比较；完整检查请用 {@link #response}。
    *
    * @param req 请求管道快照
    * @param bid 出价
    * @return Fit 结果
    */
-  public static FitResult bidFit(RequestPipeline.Snapshot req, Bid bid) {
-    return bidFit(req, bid, null, "bid");
+  public static FitResult bid(RequestPipeline.Snapshot req, Bid bid) {
+    return bid(req, bid, null, "bid");
   }
 
   /**
@@ -173,7 +173,7 @@ public final class Fit {
    * @param res 出价响应
    * @return Fit 结果
    */
-  public static FitResult responseFit(RequestPipeline.Snapshot req, BidResponse res) {
+  public static FitResult response(RequestPipeline.Snapshot req, BidResponse res) {
     Objects.requireNonNull(req, "req");
     Objects.requireNonNull(res, "res");
     List<FitIssue> issues = new ArrayList<>();
@@ -188,11 +188,13 @@ public final class Fit {
     if (res.getSeatbidCount() == 0) {
       return FitResult.of(issues);
     }
-    String resCur = res.getCur();
-    if (resCur != null && !resCur.isBlank()) {
+    // Same blank rule as LightGate / checkFloor: strip; blank skips CUR + floor.
+    String resCur = res.getCur() == null ? "" : res.getCur().strip();
+    if (!resCur.isEmpty()) {
       boolean allowed = false;
       for (String c : req.currencies()) {
-        if (resCur.equalsIgnoreCase(c)) {
+        String cc = c == null ? "" : c.strip();
+        if (!cc.isEmpty() && resCur.equalsIgnoreCase(cc)) {
           allowed = true;
           break;
         }
@@ -208,21 +210,30 @@ public final class Fit {
     }
     for (int i = 0; i < res.getSeatbidCount(); i++) {
       SeatBid sb = res.getSeatbid(i);
+      if (sb.getBidCount() == 0) {
+        issues.add(
+            new FitIssue(
+                IssueCode.MALFORMED,
+                Severity.ERROR,
+                "seatbid[" + i + "].bid",
+                "seatbid.bid must be a non-empty array"));
+        continue;
+      }
       for (int j = 0; j < sb.getBidCount(); j++) {
         String path = "seatbid[" + i + "].bid[" + j + "]";
-        FitResult one = bidFit(req, sb.getBid(j), resCur, path);
+        FitResult one = bid(req, sb.getBid(j), resCur, path);
         issues.addAll(one.issues());
       }
     }
     return FitResult.of(issues);
   }
 
-  private static FitResult bidFit(
+  private static FitResult bid(
       RequestPipeline.Snapshot req, Bid bid, String responseCur, String path) {
     Objects.requireNonNull(req, "req");
     Objects.requireNonNull(bid, "bid");
     List<FitIssue> issues = new ArrayList<>();
-    Optional<RequestInspect.ImpView> found = req.findImp(bid.getImpid());
+    Optional<RequestViews.ImpView> found = req.findImp(bid.getImpid());
     if (found.isEmpty()) {
       issues.add(
           new FitIssue(
@@ -232,7 +243,7 @@ public final class Fit {
               "impid not found in request"));
       return FitResult.of(issues);
     }
-    RequestInspect.ImpView imp = found.get();
+    RequestViews.ImpView imp = found.get();
     int mtype = bid.getMtypeValue();
     MarkupMask markup = imp.markup();
 
@@ -258,7 +269,7 @@ public final class Fit {
               path + ".mtype",
               "multi-format Imp requires Bid.mtype"));
     } else if (mtype >= 1 && mtype <= 4) {
-      MarkupMask chosen = ResponseInspect.markupFromMtypeValue(mtype);
+      MarkupMask chosen = ResponseViews.markupFromMtypeValue(mtype);
       if (!markup.has(chosen.bits())) {
         issues.add(
             new FitIssue(
@@ -272,7 +283,7 @@ public final class Fit {
     // Effective format for blocklist checks
     MarkupMask eff =
         (mtype >= 1 && mtype <= 4)
-            ? ResponseInspect.markupFromMtypeValue(mtype)
+            ? ResponseViews.markupFromMtypeValue(mtype)
             : (markup.count() == 1 ? markup : MarkupMask.of(MarkupMask.NONE));
 
     checkFloor(issues, imp, bid, responseCur, path);
@@ -283,7 +294,7 @@ public final class Fit {
 
   private static void checkFloor(
       List<FitIssue> issues,
-      RequestInspect.ImpView imp,
+      RequestViews.ImpView imp,
       Bid bid,
       String responseCur,
       String path) {
@@ -291,12 +302,13 @@ public final class Fit {
     if (floor <= 0) {
       return;
     }
-    String floorCur = imp.bidFloorCur();
-    if (responseCur != null
-        && !responseCur.isBlank()
-        && floorCur != null
-        && !floorCur.isBlank()
-        && !responseCur.equalsIgnoreCase(floorCur)) {
+    // Require both response cur and bidfloorcur before numeric compare (Fit.bid has no response cur).
+    String respCur = responseCur == null ? "" : responseCur.strip();
+    String floorCur = imp.bidFloorCur() == null ? "" : imp.bidFloorCur().strip();
+    if (respCur.isEmpty() || floorCur.isEmpty()) {
+      return;
+    }
+    if (!respCur.equalsIgnoreCase(floorCur)) {
       issues.add(
           new FitIssue(
               IssueCode.FLOOR_CUR_DIFF,
@@ -317,7 +329,7 @@ public final class Fit {
 
   private static void checkAttr(
       List<FitIssue> issues,
-      RequestInspect.ImpView imp,
+      RequestViews.ImpView imp,
       Bid bid,
       MarkupMask eff,
       String path) {
@@ -342,7 +354,7 @@ public final class Fit {
     }
   }
 
-  private static List<Integer> battrFor(RequestInspect.ImpView imp, MarkupMask eff) {
+  private static List<Integer> battrFor(RequestViews.ImpView imp, MarkupMask eff) {
     if (eff.hasBanner() && imp.banner() != null) {
       return imp.banner().getBattrList();
     }
@@ -378,7 +390,8 @@ public final class Fit {
     List<String> bapp = req.shared().bapp();
     if (!bapp.isEmpty() && bid.getBundle() != null && !bid.getBundle().isBlank()) {
       Set<String> block = toLowerSet(bapp);
-      if (block.contains(bid.getBundle().toLowerCase(Locale.ROOT))) {
+      String bundle = bid.getBundle().strip().toLowerCase(Locale.ROOT);
+      if (!bundle.isEmpty() && block.contains(bundle)) {
         issues.add(
             new FitIssue(
                 IssueCode.BUNDLE_BLOCKED,

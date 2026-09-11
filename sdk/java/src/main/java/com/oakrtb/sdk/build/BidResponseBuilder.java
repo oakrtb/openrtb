@@ -4,7 +4,8 @@ import com.oakrtb.openrtb.v2.Bid;
 import com.oakrtb.openrtb.v2.BidResponse;
 import com.oakrtb.openrtb.v2.MarkupType;
 import com.oakrtb.openrtb.v2.SeatBid;
-import com.oakrtb.sdk.validate.ValidationResult;
+import com.oakrtb.sdk.schema.Report;
+import com.oakrtb.sdk.schema.Schema;
 
 import java.util.Objects;
 
@@ -139,12 +140,11 @@ public final class BidResponseBuilder {
   /**
    * 构建 JSON 并执行 JSON Schema 校验，返回载荷与校验结果。
    *
-   * @return 含 JSON 与 {@link ValidationResult} 的封装
+   * @return 含 JSON 与 {@link Report} 的封装
    */
   public ValidatedPayload buildValidated() {
     byte[] json = buildJson();
-    ValidationResult result = com.oakrtb.sdk.validate.Validator.validateBidResponse(json);
-    return new ValidatedPayload(json, result);
+    return new ValidatedPayload(json, Schema.response(json));
   }
 
   /**

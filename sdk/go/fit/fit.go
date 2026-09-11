@@ -1,21 +1,22 @@
-// Package fit 在 RequestInspect 与 ResponseInspect 之间提供可选的 bid↔request 匹配检查。
+// Package fit 在 request/response Snapshot 之间提供可选的 bid↔request 契合检查。
 //
-// 非 JSON Schema，也非 LightGate。返回软性的 FitResult 发现项（业务不匹配不强制 error）。
-// 调用方自行决定是否因 ERROR 拒绝或依据 WARN 处理。
+// 非 JSON Schema，也非 LightGate。返回软性的 FitResult 发现项。
+// OK() 仅表示无 ERROR；WARN（低价/屏蔽/超时等）仍可能 OK；政策拒投请读 Warnings()/Has。
 package fit
 
 import (
+	"strconv"
 	"strings"
 
-	"github.com/oakrtb/openrtb/sdk/go/inspect"
+	"github.com/oakrtb/openrtb/sdk/go/view"
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
 )
 
 // ImpReadyMtype 检查所选 markup 类型是否存在于 Imp 且具备构建器级规格。
-func ImpReadyMtype(imp *inspect.ImpView, mtype int32) FitResult {
+func ImpReadyMtype(imp *view.ImpView, mtype int32) FitResult {
 	if imp == nil {
 		return FitResult{Issues: []FitIssue{{
-			Code: CodeImpNotFound, Severity: SeverityError, Path: "imp", Message: "nil ImpView",
+			Code: CodeMalformed, Severity: SeverityError, Path: "imp", Message: "nil ImpView",
 		}}}
 	}
 	path := "imp[" + imp.ID + "]"
@@ -25,14 +26,14 @@ func ImpReadyMtype(imp *inspect.ImpView, mtype int32) FitResult {
 			Message: "mtype must be 1–4 for ImpReady",
 		}}}
 	}
-	return impReadyChosen(imp, inspect.MarkupFromMtype(openrtb.MarkupType(mtype)), path)
+	return impReadyChosen(imp, view.MarkupFromMtype(openrtb.MarkupType(mtype)), path)
 }
 
 // ImpReadyMarkup 与 ImpReadyMtype 类似，但使用单比特 MarkupMask 指定类型。
-func ImpReadyMarkup(imp *inspect.ImpView, chosen inspect.MarkupMask) FitResult {
+func ImpReadyMarkup(imp *view.ImpView, chosen view.MarkupMask) FitResult {
 	if imp == nil {
 		return FitResult{Issues: []FitIssue{{
-			Code: CodeImpNotFound, Severity: SeverityError, Path: "imp", Message: "nil ImpView",
+			Code: CodeMalformed, Severity: SeverityError, Path: "imp", Message: "nil ImpView",
 		}}}
 	}
 	path := "imp[" + imp.ID + "]"
@@ -45,7 +46,7 @@ func ImpReadyMarkup(imp *inspect.ImpView, chosen inspect.MarkupMask) FitResult {
 	return impReadyChosen(imp, chosen, path)
 }
 
-func impReadyChosen(imp *inspect.ImpView, chosen inspect.MarkupMask, path string) FitResult {
+func impReadyChosen(imp *view.ImpView, chosen view.MarkupMask, path string) FitResult {
 	var issues []FitIssue
 	if !imp.Markup.Has(chosen) {
 		return FitResult{Issues: []FitIssue{{
@@ -106,17 +107,17 @@ func impReadyChosen(imp *inspect.ImpView, chosen inspect.MarkupMask, path string
 	return FitResult{Issues: issues}
 }
 
-// BidFit 将单个 Bid 与请求快照进行匹配检查。
-func BidFit(req *inspect.RequestSnapshot, bid *openrtb.Bid) FitResult {
-	return bidFit(req, bid, "", "bid")
+// Bid 将单个 Bid 与请求快照做 Fit。无响应货币时跳过底价比较；完整检查请用 Response。
+func Bid(req *view.RequestSnapshot, bid *openrtb.Bid) FitResult {
+	return bidAt(req, bid, "", "bid")
 }
 
-// ResponseFit 对整个 BidResponse 做匹配检查；空 seatbid 视为通过（可附加 PAST_DEADLINE 警告）。
-func ResponseFit(req *inspect.RequestSnapshot, res *openrtb.BidResponse) FitResult {
+// Response 对整个 BidResponse 做匹配检查；空 seatbid 视为通过（可附加 PAST_DEADLINE 警告）。
+func Response(req *view.RequestSnapshot, res *openrtb.BidResponse) FitResult {
 	var issues []FitIssue
 	if req == nil || res == nil {
 		return FitResult{Issues: []FitIssue{{
-			Code: CodeImpNotFound, Severity: SeverityError, Path: "", Message: "nil req or res",
+			Code: CodeMalformed, Severity: SeverityError, Path: "", Message: "nil req or res",
 		}}}
 	}
 	if req.PastDeadline() {
@@ -128,11 +129,12 @@ func ResponseFit(req *inspect.RequestSnapshot, res *openrtb.BidResponse) FitResu
 	if len(res.Seatbid) == 0 {
 		return FitResult{Issues: issues}
 	}
-	resCur := res.Cur
+	// Same blank rule as LightGate / checkFloor: trim; blank skips CUR + floor.
+	resCur := strings.TrimSpace(res.Cur)
 	if resCur != "" {
 		allowed := false
 		for _, c := range req.Currencies() {
-			if strings.EqualFold(resCur, c) {
+			if strings.EqualFold(resCur, strings.TrimSpace(c)) {
 				allowed = true
 				break
 			}
@@ -146,25 +148,41 @@ func ResponseFit(req *inspect.RequestSnapshot, res *openrtb.BidResponse) FitResu
 	}
 	for i, sb := range res.Seatbid {
 		if sb == nil {
+			issues = append(issues, FitIssue{
+				Code: CodeMalformed, Severity: SeverityError, Path: "seatbid[" + itoa(i) + "]",
+				Message: "seatbid entry is nil",
+			})
+			continue
+		}
+		if len(sb.Bid) == 0 {
+			issues = append(issues, FitIssue{
+				Code: CodeMalformed, Severity: SeverityError, Path: "seatbid[" + itoa(i) + "].bid",
+				Message: "seatbid.bid must be a non-empty array",
+			})
 			continue
 		}
 		for j, bid := range sb.Bid {
 			if bid == nil {
+				issues = append(issues, FitIssue{
+					Code: CodeMalformed, Severity: SeverityError,
+					Path: "seatbid[" + itoa(i) + "].bid[" + itoa(j) + "]",
+					Message: "bid is nil",
+				})
 				continue
 			}
 			path := "seatbid[" + itoa(i) + "].bid[" + itoa(j) + "]"
-			one := bidFit(req, bid, resCur, path)
+			one := bidAt(req, bid, resCur, path)
 			issues = append(issues, one.Issues...)
 		}
 	}
 	return FitResult{Issues: issues}
 }
 
-func bidFit(req *inspect.RequestSnapshot, bid *openrtb.Bid, responseCur, path string) FitResult {
+func bidAt(req *view.RequestSnapshot, bid *openrtb.Bid, responseCur, path string) FitResult {
 	var issues []FitIssue
 	if req == nil || bid == nil {
 		return FitResult{Issues: []FitIssue{{
-			Code: CodeImpNotFound, Severity: SeverityError, Path: path, Message: "nil req or bid",
+			Code: CodeMalformed, Severity: SeverityError, Path: path, Message: "nil req or bid",
 		}}}
 	}
 	imp := req.FindImp(bid.Impid)
@@ -193,7 +211,7 @@ func bidFit(req *inspect.RequestSnapshot, bid *openrtb.Bid, responseCur, path st
 			Message: "multi-format Imp requires Bid.mtype",
 		})
 	} else if mtype >= 1 && mtype <= 4 {
-		chosen := inspect.MarkupFromMtype(openrtb.MarkupType(mtype))
+		chosen := view.MarkupFromMtype(openrtb.MarkupType(mtype))
 		if !markup.Has(chosen) {
 			issues = append(issues, FitIssue{
 				Code: CodeMtypeMismatch, Severity: SeverityError, Path: path + ".mtype",
@@ -202,9 +220,9 @@ func bidFit(req *inspect.RequestSnapshot, bid *openrtb.Bid, responseCur, path st
 		}
 	}
 
-	eff := inspect.MarkupNone
+	eff := view.MarkupNone
 	if mtype >= 1 && mtype <= 4 {
-		eff = inspect.MarkupFromMtype(openrtb.MarkupType(mtype))
+		eff = view.MarkupFromMtype(openrtb.MarkupType(mtype))
 	} else if markup.Count() == 1 {
 		eff = markup
 	}
@@ -215,13 +233,18 @@ func bidFit(req *inspect.RequestSnapshot, bid *openrtb.Bid, responseCur, path st
 	return FitResult{Issues: issues}
 }
 
-func checkFloor(imp *inspect.ImpView, bid *openrtb.Bid, responseCur, path string) []FitIssue {
+func checkFloor(imp *view.ImpView, bid *openrtb.Bid, responseCur, path string) []FitIssue {
 	floor := imp.BidFloor
 	if floor <= 0 {
 		return nil
 	}
-	floorCur := imp.BidFloorCur
-	if responseCur != "" && floorCur != "" && !strings.EqualFold(responseCur, floorCur) {
+	// Require both response cur and bidfloorcur before numeric compare (Fit.Bid has no response cur).
+	respCur := strings.TrimSpace(responseCur)
+	floorCur := strings.TrimSpace(imp.BidFloorCur)
+	if respCur == "" || floorCur == "" {
+		return nil
+	}
+	if !strings.EqualFold(respCur, floorCur) {
 		return []FitIssue{{
 			Code: CodeFloorCurDiff, Severity: SeverityWarn, Path: path + ".price",
 			Message: "bid currency differs from imp.bidfloorcur; skip floor compare",
@@ -236,8 +259,8 @@ func checkFloor(imp *inspect.ImpView, bid *openrtb.Bid, responseCur, path string
 	return nil
 }
 
-func checkAttr(imp *inspect.ImpView, bid *openrtb.Bid, eff inspect.MarkupMask, path string) []FitIssue {
-	if len(bid.Attr) == 0 || eff == inspect.MarkupNone {
+func checkAttr(imp *view.ImpView, bid *openrtb.Bid, eff view.MarkupMask, path string) []FitIssue {
+	if len(bid.Attr) == 0 || eff == view.MarkupNone {
 		return nil
 	}
 	battr := battrFor(imp, eff)
@@ -259,7 +282,7 @@ func checkAttr(imp *inspect.ImpView, bid *openrtb.Bid, eff inspect.MarkupMask, p
 	return nil
 }
 
-func battrFor(imp *inspect.ImpView, eff inspect.MarkupMask) []int32 {
+func battrFor(imp *view.ImpView, eff view.MarkupMask) []int32 {
 	if eff.HasBanner() && imp.Banner != nil {
 		return imp.Banner.Battr
 	}
@@ -275,7 +298,7 @@ func battrFor(imp *inspect.ImpView, eff inspect.MarkupMask) []int32 {
 	return nil
 }
 
-func checkBlocks(req *inspect.RequestSnapshot, bid *openrtb.Bid, path string) []FitIssue {
+func checkBlocks(req *view.RequestSnapshot, bid *openrtb.Bid, path string) []FitIssue {
 	var issues []FitIssue
 	if len(req.Shared.Badv) > 0 {
 		block := lowerSet(req.Shared.Badv)
@@ -289,9 +312,9 @@ func checkBlocks(req *inspect.RequestSnapshot, bid *openrtb.Bid, path string) []
 			}
 		}
 	}
-	if len(req.Shared.Bapp) > 0 && bid.Bundle != "" {
+	if len(req.Shared.Bapp) > 0 && strings.TrimSpace(bid.Bundle) != "" {
 		block := lowerSet(req.Shared.Bapp)
-		if _, ok := block[strings.ToLower(bid.Bundle)]; ok {
+		if _, ok := block[strings.ToLower(strings.TrimSpace(bid.Bundle))]; ok {
 			issues = append(issues, FitIssue{
 				Code: CodeBundleBlocked, Severity: SeverityWarn, Path: path + ".bundle",
 				Message: "bundle hit BidRequest.bapp",
@@ -322,16 +345,5 @@ func lowerSet(in []string) map[string]struct{} {
 }
 
 func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var b [20]byte
-	pos := len(b)
-	n := i
-	for n > 0 {
-		pos--
-		b[pos] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(b[pos:])
+	return strconv.Itoa(i)
 }

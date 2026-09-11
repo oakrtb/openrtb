@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
-	"github.com/oakrtb/openrtb/sdk/go/validate"
+	"github.com/oakrtb/openrtb/sdk/go/schema"
 )
 
 var marshalOpts = protojson.MarshalOptions{
@@ -46,15 +46,15 @@ func UnmarshalBidResponse(data []byte) (*openrtb.BidResponse, error) {
 	return out, nil
 }
 
-// ValidateJSON 对已编码的 OpenRTB JSON 执行 Schema 校验。
-func ValidateJSON(kind string, data []byte) validate.ValidationResult {
+// Check 对已编码的 OpenRTB JSON 执行 Schema 校验。
+func Check(kind string, data []byte) schema.Report {
 	switch kind {
 	case "request", "bid-request":
-		return validate.ValidateBidRequest(data)
+		return schema.Request(data)
 	case "response", "bid-response":
-		return validate.ValidateBidResponse(data)
+		return schema.Response(data)
 	default:
-		return validate.Fail(validate.ValidationError{
+		return schema.Fail(schema.Issue{
 			Code:    "constraint",
 			Path:    "",
 			Message: "unknown kind: " + kind,

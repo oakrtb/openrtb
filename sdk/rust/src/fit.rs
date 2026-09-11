@@ -1,8 +1,9 @@
 //! 可选的 Bid↔Request 软匹配检查（基于 [`RequestSnapshot`] 与响应 JSON）。
 //!
 //! 非 JSON Schema，也非 LightGate；返回软性的 [`FitResult`] 发现项。
+//! [`FitResult::ok`] 仅表示无 ERROR；WARN（低价/屏蔽/超时等）仍可能 ok。
 
-use crate::inspect::{markup_from_mtype, MarkupMask, ImpView, RequestSnapshot};
+use crate::view::{markup_from_mtype, MarkupMask, ImpView, RequestSnapshot};
 use serde_json::Value;
 
 /// 发现项严重级别。
@@ -40,6 +41,8 @@ pub const CODE_NATIVE_REQUEST_MISSING: &str = "NATIVE_REQUEST_MISSING";
 pub const CODE_VIDEO_DURATION_UNSET: &str = "VIDEO_DURATION_UNSET";
 /// Video protocols 未设置（警告）。
 pub const CODE_VIDEO_PROTOCOLS_UNSET: &str = "VIDEO_PROTOCOLS_UNSET";
+/// 响应/载荷结构无法解析（如非 JSON object）。
+pub const CODE_MALFORMED: &str = "MALFORMED";
 /// Bid.impid 在请求中不存在。
 pub const CODE_IMP_NOT_FOUND: &str = "IMP_NOT_FOUND";
 /// 多格式 Imp 要求 Bid.mtype。
@@ -107,6 +110,16 @@ impl FitResult {
     /// 是否包含指定 code 的发现项。
     pub fn has(&self, code: &str) -> bool {
         self.issues.iter().any(|i| i.code == code)
+    }
+
+    /// ERROR 级别发现项。
+    pub fn errors(&self) -> impl Iterator<Item = &FitIssue> {
+        self.issues.iter().filter(|i| i.severity == Severity::Error)
+    }
+
+    /// WARN 级别发现项。
+    pub fn warnings(&self) -> impl Iterator<Item = &FitIssue> {
+        self.issues.iter().filter(|i| i.severity == Severity::Warn)
     }
 }
 
@@ -240,12 +253,23 @@ fn banner_size_ok(b: &Value) -> bool {
 }
 
 /// 将单个 Bid JSON 对象与请求快照做 Fit 检查。
-pub fn bid_fit(req: &RequestSnapshot<'_>, bid: &Value) -> FitResult {
-    bid_fit_path(req, bid, None, "bid")
+/// 无响应货币时跳过底价比较；完整检查请用 [`response`]。
+pub fn bid(req: &RequestSnapshot<'_>, bid: &Value) -> FitResult {
+    if !bid.is_object() {
+        return FitResult {
+            issues: vec![FitIssue::new(
+                CODE_MALFORMED,
+                Severity::Error,
+                "bid",
+                "bid must be a JSON object",
+            )],
+        };
+    }
+    bid_at(req, bid, None, "bid")
 }
 
 /// 对整个 BidResponse 做 Fit 检查。空 seatbid 视为通过（可附带 PAST_DEADLINE 警告）。
-pub fn response_fit(req: &RequestSnapshot<'_>, res: &Value) -> FitResult {
+pub fn response(req: &RequestSnapshot<'_>, res: &Value) -> FitResult {
     let mut issues = Vec::new();
     if req.past_deadline() {
         issues.push(FitIssue::new(
@@ -256,19 +280,65 @@ pub fn response_fit(req: &RequestSnapshot<'_>, res: &Value) -> FitResult {
         ));
     }
     let Some(obj) = res.as_object() else {
+        issues.push(FitIssue::new(
+            CODE_MALFORMED,
+            Severity::Error,
+            "",
+            "BidResponse must be a JSON object",
+        ));
         return FitResult { issues };
     };
-    let seatbid = obj.get("seatbid").and_then(|v| v.as_array());
-    if seatbid.map(|a| a.is_empty()).unwrap_or(true) {
+    let seatbid = match obj.get("seatbid") {
+        None => return FitResult { issues },
+        Some(v) if v.is_null() => return FitResult { issues },
+        Some(v) => match v.as_array() {
+            Some(a) => a,
+            None => {
+                issues.push(FitIssue::new(
+                    CODE_MALFORMED,
+                    Severity::Error,
+                    "seatbid",
+                    "BidResponse.seatbid must be an array",
+                ));
+                return FitResult { issues };
+            }
+        },
+    };
+    if seatbid.is_empty() {
         return FitResult { issues };
     }
-    let res_cur = obj.get("cur").and_then(|v| v.as_str());
+    // Same blank rule as LightGate / check_floor: trim; blank skips CUR + floor.
+    // Non-string cur is structural (LightGate would reject); Fit emits MALFORMED.
+    let res_cur = match obj.get("cur") {
+        None | Some(serde_json::Value::Null) => None,
+        Some(v) => match v.as_str() {
+            Some(s) => {
+                let s = s.trim();
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s)
+                }
+            }
+            None => {
+                issues.push(FitIssue::new(
+                    CODE_MALFORMED,
+                    Severity::Error,
+                    "BidResponse.cur",
+                    "BidResponse.cur must be a string",
+                ));
+                None
+            }
+        },
+    };
     if let Some(rc) = res_cur {
         let allowed = req
             .shared
             .cur
             .iter()
             .filter_map(|v| v.as_str())
+            .map(str::trim)
+            .filter(|c| !c.is_empty())
             .any(|c| c.eq_ignore_ascii_case(rc));
         if !allowed {
             issues.push(FitIssue::new(
@@ -279,18 +349,53 @@ pub fn response_fit(req: &RequestSnapshot<'_>, res: &Value) -> FitResult {
             ));
         }
     }
-    for (i, sb) in seatbid.unwrap().iter().enumerate() {
-        let bids = sb.get("bid").and_then(|v| v.as_array()).into_iter().flatten();
-        for (j, bid) in bids.enumerate() {
+    for (i, sb) in seatbid.iter().enumerate() {
+        if !sb.is_object() {
+            issues.push(FitIssue::new(
+                CODE_MALFORMED,
+                Severity::Error,
+                format!("seatbid[{i}]"),
+                "seatbid entry must be an object",
+            ));
+            continue;
+        }
+        let Some(bids) = sb.get("bid").and_then(|v| v.as_array()) else {
+            issues.push(FitIssue::new(
+                CODE_MALFORMED,
+                Severity::Error,
+                format!("seatbid[{i}].bid"),
+                "seatbid.bid must be a non-empty array",
+            ));
+            continue;
+        };
+        if bids.is_empty() {
+            issues.push(FitIssue::new(
+                CODE_MALFORMED,
+                Severity::Error,
+                format!("seatbid[{i}].bid"),
+                "seatbid.bid must be a non-empty array",
+            ));
+            continue;
+        }
+        for (j, bid) in bids.iter().enumerate() {
+            if !bid.is_object() {
+                issues.push(FitIssue::new(
+                    CODE_MALFORMED,
+                    Severity::Error,
+                    format!("seatbid[{i}].bid[{j}]"),
+                    "bid must be an object",
+                ));
+                continue;
+            }
             let path = format!("seatbid[{i}].bid[{j}]");
-            let one = bid_fit_path(req, bid, res_cur, &path);
+            let one = bid_at(req, bid, res_cur, &path);
             issues.extend(one.issues);
         }
     }
     FitResult { issues }
 }
 
-fn bid_fit_path(
+fn bid_at(
     req: &RequestSnapshot<'_>,
     bid: &Value,
     response_cur: Option<&str>,
@@ -368,16 +473,20 @@ fn check_floor(
     if floor <= 0.0 {
         return vec![];
     }
+    // Require both response cur and bidfloorcur before numeric compare (`bid` has no response cur).
+    let resp_cur = response_cur.map(str::trim).unwrap_or("");
+    let floor_cur = imp.bidfloorcur.map(str::trim).unwrap_or("");
+    if resp_cur.is_empty() || floor_cur.is_empty() {
+        return vec![];
+    }
     let price = bid.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    if let (Some(rc), Some(fc)) = (response_cur, imp.bidfloorcur) {
-        if !rc.is_empty() && !fc.is_empty() && !rc.eq_ignore_ascii_case(fc) {
-            return vec![FitIssue::new(
-                CODE_FLOOR_CUR_DIFF,
-                Severity::Warn,
-                format!("{path}.price"),
-                "bid currency differs from imp.bidfloorcur; skip floor compare",
-            )];
-        }
+    if !resp_cur.eq_ignore_ascii_case(floor_cur) {
+        return vec![FitIssue::new(
+            CODE_FLOOR_CUR_DIFF,
+            Severity::Warn,
+            format!("{path}.price"),
+            "bid currency differs from imp.bidfloorcur; skip floor compare",
+        )];
     }
     if price < floor {
         return vec![FitIssue::new(
@@ -453,8 +562,8 @@ fn check_blocks(req: &RequestSnapshot<'_>, bid: &Value, path: &str) -> Vec<FitIs
     }
     let bapp = str_list(req.shared.bapp);
     if !bapp.is_empty() {
-        if let Some(bundle) = bid.get("bundle").and_then(|v| v.as_str()) {
-            if bapp.iter().any(|b| b.eq_ignore_ascii_case(bundle)) {
+        if let Some(bundle) = bid.get("bundle").and_then(|v| v.as_str()).map(str::trim) {
+            if !bundle.is_empty() && bapp.iter().any(|b| b.eq_ignore_ascii_case(bundle)) {
                 issues.push(FitIssue::new(
                     CODE_BUNDLE_BLOCKED,
                     Severity::Warn,
@@ -492,7 +601,7 @@ fn str_list(vals: &[Value]) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::inspect::{run_request, MarkupMask};
+    use crate::view::{run_request, MarkupMask};
     use serde_json::json;
 
     fn banner_req() -> Value {
@@ -534,7 +643,7 @@ mod tests {
         });
         let snap = run_request(&req).unwrap();
         let bid = json!({"id": "b1", "impid": "1", "price": 2.0});
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(!r.ok());
         assert!(r.has(CODE_MTYPE_REQUIRED));
     }
@@ -544,7 +653,7 @@ mod tests {
         let req = banner_req();
         let snap = run_request(&req).unwrap();
         let bid = json!({"id": "b1", "impid": "1", "price": 2.0, "mtype": 2});
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(!r.ok());
         assert!(r.has(CODE_MTYPE_MISMATCH));
     }
@@ -554,8 +663,114 @@ mod tests {
         let req = banner_req();
         let snap = run_request(&req).unwrap();
         let bid = json!({"id": "b1", "impid": "1", "price": 0.5, "mtype": 1});
-        let r = bid_fit(&snap, &bid);
+        // Fit.bid has no response cur → skip floor; use response path.
+        assert!(!super::bid(&snap, &bid).has(CODE_PRICE_BELOW_FLOOR));
+        let res = json!({
+            "id": "a1", "cur": "USD",
+            "seatbid": [{"bid": [bid]}]
+        });
+        let r = response(&snap, &res);
         assert!(r.ok());
+        assert!(r.has(CODE_PRICE_BELOW_FLOOR));
+    }
+
+    #[test]
+    fn response_non_object_malformed() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        let r = response(&snap, &json!([]));
+        assert!(!r.ok());
+        assert!(r.has(CODE_MALFORMED));
+    }
+
+    #[test]
+    fn response_seatbid_non_array_malformed() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        let r = response(&snap, &json!({"id": "a1", "cur": "USD", "seatbid": {}}));
+        assert!(!r.ok());
+        assert!(r.has(CODE_MALFORMED));
+    }
+
+    #[test]
+    fn response_seatbid_empty_bid_malformed() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        for seatbid in [
+            json!([{}]),
+            json!([{"bid": []}]),
+            json!([{"bid": 1}]),
+            json!([{"bid": [1]}]),
+        ] {
+            let r = response(&snap, &json!({"id": "a1", "cur": "USD", "seatbid": seatbid}));
+            assert!(!r.ok(), "{r:?}");
+            assert!(r.has(CODE_MALFORMED), "{r:?}");
+        }
+    }
+
+    #[test]
+    fn bid_non_object_malformed() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        let r = super::bid(&snap, &json!([]));
+        assert!(!r.ok());
+        assert!(r.has(CODE_MALFORMED));
+    }
+
+    #[test]
+    fn response_blank_cur_skips_cur_and_floor() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        let bid = json!({"id": "b1", "impid": "1", "price": 0.5, "mtype": 1});
+        let res = json!({
+            "id": "a1", "cur": "   ",
+            "seatbid": [{"bid": [bid]}]
+        });
+        let r = response(&snap, &res);
+        assert!(r.ok());
+        assert!(!r.has(CODE_CUR_NOT_ALLOWED));
+        assert!(!r.has(CODE_PRICE_BELOW_FLOOR));
+    }
+
+    #[test]
+    fn response_non_string_cur_malformed() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        let bid = json!({"id": "b1", "impid": "1", "price": 2.0, "mtype": 1});
+        let r = response(
+            &snap,
+            &json!({"id": "a1", "cur": 1, "seatbid": [{"bid": [bid]}]}),
+        );
+        assert!(!r.ok());
+        assert!(r.has(CODE_MALFORMED));
+    }
+
+    #[test]
+    fn fit_result_warnings_errors() {
+        let mut r = FitResult {
+            issues: vec![
+                FitIssue::new(CODE_IMP_NOT_FOUND, Severity::Error, "x", "e"),
+                FitIssue::new(CODE_PRICE_BELOW_FLOOR, Severity::Warn, "y", "w"),
+            ],
+        };
+        assert_eq!(r.errors().count(), 1);
+        assert_eq!(r.warnings().count(), 1);
+        assert!(!r.ok());
+        let _ = &mut r;
+    }
+
+    #[test]
+    fn response_cur_whitespace_trimmed_for_allow_and_floor() {
+        let req = banner_req();
+        let snap = run_request(&req).unwrap();
+        let bid = json!({"id": "b1", "impid": "1", "price": 0.5, "mtype": 1});
+        let res = json!({
+            "id": "a1", "cur": "  USD  ",
+            "seatbid": [{"bid": [bid]}]
+        });
+        let r = response(&snap, &res);
+        assert!(r.ok());
+        assert!(!r.has(CODE_CUR_NOT_ALLOWED));
         assert!(r.has(CODE_PRICE_BELOW_FLOOR));
     }
 
@@ -567,17 +782,17 @@ mod tests {
         });
         let snap = run_request(&req).unwrap();
         let bid = json!({"id": "b1", "impid": "1", "price": 2.0, "mtype": 1, "attr": [1]});
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(r.ok());
         assert!(r.has(CODE_ATTR_BLOCKED));
     }
 
     #[test]
-    fn no_bid_response_fit() {
+    fn no_bid_response() {
         let req = banner_req();
         let snap = run_request(&req).unwrap();
         let res = json!({"id": "a1", "cur": "USD", "nbr": 0});
-        let r = response_fit(&snap, &res);
+        let r = response(&snap, &res);
         assert!(r.ok());
     }
 
@@ -586,13 +801,13 @@ mod tests {
         let req = banner_req();
         let snap = run_request(&req).unwrap();
         let bid = json!({"id": "b1", "impid": "missing", "price": 2.0, "mtype": 1});
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(!r.ok());
         assert!(r.has(CODE_IMP_NOT_FOUND));
     }
 
     #[test]
-    fn response_fit_happy() {
+    fn response_happy() {
         let req = banner_req();
         let snap = run_request(&req).unwrap();
         let res = json!({
@@ -602,7 +817,7 @@ mod tests {
                 "id": "b1", "impid": "1", "price": 2.0, "mtype": 1, "adm": "<a/>"
             }]}]
         });
-        let r = response_fit(&snap, &res);
+        let r = response(&snap, &res);
         assert!(r.ok());
     }
 
@@ -683,7 +898,7 @@ mod tests {
             "id": "a1", "cur": "USD",
             "seatbid": [{"bid": [bid.clone()]}]
         });
-        let r = response_fit(&snap, &res);
+        let r = response(&snap, &res);
         assert!(r.ok());
         assert!(r.has(CODE_FLOOR_CUR_DIFF));
         assert!(!r.has(CODE_PRICE_BELOW_FLOOR));
@@ -700,7 +915,7 @@ mod tests {
             "id": "b1", "impid": "1", "price": 2.0, "mtype": 1,
             "adomain": ["blocked.com"]
         });
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(r.has(CODE_ADOMAIN_BLOCKED));
     }
 
@@ -715,7 +930,7 @@ mod tests {
             "id": "b1", "impid": "1", "price": 2.0, "mtype": 1,
             "bundle": "com.blocked"
         });
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(r.has(CODE_BUNDLE_BLOCKED));
     }
 
@@ -730,7 +945,7 @@ mod tests {
             "id": "b1", "impid": "1", "price": 2.0, "mtype": 1,
             "cat": ["IAB25"]
         });
-        let r = bid_fit(&snap, &bid);
+        let r = super::bid(&snap, &bid);
         assert!(r.has(CODE_CAT_BLOCKED));
     }
 
@@ -744,7 +959,7 @@ mod tests {
                 "id": "b1", "impid": "1", "price": 2.0, "mtype": 1
             }]}]
         });
-        let r = response_fit(&snap, &res);
+        let r = response(&snap, &res);
         assert!(r.has(CODE_CUR_NOT_ALLOWED));
     }
 

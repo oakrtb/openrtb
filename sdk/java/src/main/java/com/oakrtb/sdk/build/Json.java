@@ -5,8 +5,8 @@ import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
 import com.oakrtb.openrtb.v2.BidRequest;
 import com.oakrtb.openrtb.v2.BidResponse;
-import com.oakrtb.sdk.validate.ValidationResult;
-import com.oakrtb.sdk.validate.Validator;
+import com.oakrtb.sdk.schema.Report;
+import com.oakrtb.sdk.schema.Schema;
 
 import java.nio.charset.StandardCharsets;
 
@@ -82,19 +82,19 @@ public final class Json {
    * 对 BidRequest JSON 字节执行 Schema 校验。
    *
    * @param json UTF-8 JSON 字节
-   * @return 校验结果
+   * @return 校验报告
    */
-  public static ValidationResult validateBidRequestJson(byte[] json) {
-    return Validator.validateBidRequest(json);
+  public static Report request(byte[] json) {
+    return Schema.request(json);
   }
 
   /**
    * 对 BidResponse JSON 字节执行 Schema 校验。
    *
    * @param json UTF-8 JSON 字节
-   * @return 校验结果
+   * @return 校验报告
    */
-  public static ValidationResult validateBidResponseJson(byte[] json) {
-    return Validator.validateBidResponse(json);
+  public static Report response(byte[] json) {
+    return Schema.response(json);
   }
 }

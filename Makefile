@@ -13,8 +13,8 @@ validate:
 
 # 将权威 schema 同步为 Go 模块内入库副本（Java/Rust 构建时各自拷入）。
 sync-schemas:
-	@mkdir -p sdk/go/validate/schemas
-	cp schema/jsonschema/*.json sdk/go/validate/schemas/
+	@mkdir -p sdk/go/schema/schemas
+	cp schema/jsonschema/*.json sdk/go/schema/schemas/
 
 # Syntax-check protobuf (no language plugins required).
 proto-check:

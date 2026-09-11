@@ -64,7 +64,7 @@ Body 压缩与对象 schema 无关，只作用于 HTTP 实体。OakRTB **支持�
 
 ## 校验失败响应（400）
 
-Body 使用统一的 `ValidationResult`（见 `schema/jsonschema/validation-result.schema.json`）：
+Body 使用统一的 `Report` JSON 形状（对齐 `schema/jsonschema/validation-result.schema.json`）：
 
 ```json
 {
@@ -86,7 +86,7 @@ Body 使用统一的 `ValidationResult`（见 `schema/jsonschema/validation-resu
 | `errors[].path` | JSON Pointer（RFC 6901） |
 | `errors[].message` | 人类可读说明 |
 
-Go / Java / Rust SDK 的 `ValidateBidRequest` / `ValidateBidResponse` 返回同一形状；调用方可直接序列化为 400 响应体。
+Go / Java / Rust SDK 的 `schema.Request` / `schema.Response`（Java：`Schema.request` / `Schema.response`；Rust：`schema::request` / `schema::response`）返回 `Report`（元素为 `Issue`），形状同上；调用方可直接序列化为 400 响应体。
 
 ## 时延
 

@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/oakrtb/openrtb/sdk/go/build"
-	"github.com/oakrtb/openrtb/sdk/go/inspect"
+	"github.com/oakrtb/openrtb/sdk/go/view"
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
 )
 
-func bannerSnap(t *testing.T) *inspect.RequestSnapshot {
+func bannerSnap(t *testing.T) *view.RequestSnapshot {
 	t.Helper()
 	req, err := build.NewBidRequest("a1").
 		FirstPrice().
@@ -19,7 +19,7 @@ func bannerSnap(t *testing.T) *inspect.RequestSnapshot {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snap, err := inspect.RunRequest(req)
+	snap, err := view.RunRequest(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestImpReadyVideoMissingMimes(t *testing.T) {
 		Cur: []string{"USD"},
 		Imp: []*openrtb.Imp{{Id: "1", Video: &openrtb.Video{}}},
 	}
-	snap, err := inspect.RunRequest(req)
+	snap, err := view.RunRequest(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +54,12 @@ func TestMultiFormatNeedsMtype(t *testing.T) {
 			Video:  &openrtb.Video{Mimes: []string{"video/mp4"}},
 		}},
 	}
-	snap, err := inspect.RunRequest(req)
+	snap, err := view.RunRequest(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	bid := &openrtb.Bid{Id: "b1", Impid: "1", Price: 2}
-	r := BidFit(snap, bid)
+	r := Bid(snap, bid)
 	if r.OK() || !r.Has(CodeMtypeRequired) {
 		t.Fatalf("got %+v", r)
 	}
@@ -71,7 +71,7 @@ func TestMtypeMismatch(t *testing.T) {
 		Id: "b1", Impid: "1", Price: 2,
 		Mtype: openrtb.MarkupType_MARKUP_TYPE_VIDEO,
 	}
-	r := BidFit(snap, bid)
+	r := Bid(snap, bid)
 	if r.OK() || !r.Has(CodeMtypeMismatch) {
 		t.Fatalf("got %+v", r)
 	}
@@ -80,7 +80,14 @@ func TestMtypeMismatch(t *testing.T) {
 func TestPriceBelowFloorWarn(t *testing.T) {
 	snap := bannerSnap(t)
 	bid := build.NewBid("b1", "1", 0.5).Banner().Build()
-	r := BidFit(snap, bid)
+	if Bid(snap, bid).Has(CodePriceBelowFloor) {
+		t.Fatal("Fit.Bid without response cur must skip floor compare")
+	}
+	res, err := build.NewBidResponse("a1").Currency("USD").AddSeatBid("s1", bid).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Response(snap, res)
 	if !r.OK() || !r.Has(CodePriceBelowFloor) {
 		t.Fatalf("got %+v", r)
 	}
@@ -96,7 +103,7 @@ func TestAttrBlockedWarn(t *testing.T) {
 			Banner: &openrtb.Banner{W: 300, H: 250, Battr: []int32{1}},
 		}},
 	}
-	snap, err := inspect.RunRequest(req)
+	snap, err := view.RunRequest(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,19 +112,19 @@ func TestAttrBlockedWarn(t *testing.T) {
 		Mtype: openrtb.MarkupType_MARKUP_TYPE_BANNER,
 		Attr:  []int32{1},
 	}
-	r := BidFit(snap, bid)
+	r := Bid(snap, bid)
 	if !r.OK() || !r.Has(CodeAttrBlocked) {
 		t.Fatalf("got %+v", r)
 	}
 }
 
-func TestNoBidResponseFit(t *testing.T) {
+func TestNoBidResponse(t *testing.T) {
 	snap := bannerSnap(t)
 	res, err := build.NewBidResponse("a1").Currency("USD").NoBid(0).Build()
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := ResponseFit(snap, res)
+	r := Response(snap, res)
 	if !r.OK() {
 		t.Fatalf("got %+v", r)
 	}
@@ -126,7 +133,7 @@ func TestNoBidResponseFit(t *testing.T) {
 func TestImpidNotFound(t *testing.T) {
 	snap := bannerSnap(t)
 	bid := build.NewBid("b1", "missing", 2).Banner().Build()
-	r := BidFit(snap, bid)
+	r := Bid(snap, bid)
 	if r.OK() || !r.Has(CodeImpNotFound) {
 		t.Fatalf("got %+v", r)
 	}
@@ -134,13 +141,13 @@ func TestImpidNotFound(t *testing.T) {
 
 func TestImpReadyMarkupBit(t *testing.T) {
 	snap := bannerSnap(t)
-	r := ImpReadyMarkup(&snap.Imps[0], inspect.MarkupBanner)
+	r := ImpReadyMarkup(&snap.Imps[0], view.MarkupBanner)
 	if !r.OK() {
 		t.Fatalf("got %+v", r)
 	}
 }
 
-func TestResponseFitHappy(t *testing.T) {
+func TestResponseHappy(t *testing.T) {
 	snap := bannerSnap(t)
 	res, err := build.NewBidResponse("a1").
 		Currency("USD").
@@ -149,8 +156,88 @@ func TestResponseFitHappy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := ResponseFit(snap, res)
+	r := Response(snap, res)
 	if !r.OK() {
+		t.Fatalf("got %+v", r)
+	}
+}
+
+func TestFloorCurDiffSkipsCompare(t *testing.T) {
+	req := &openrtb.BidRequest{
+		Id: "a1", At: 1, Cur: []string{"USD"},
+		Imp: []*openrtb.Imp{{
+			Id: "1", Bidfloor: 1.0, Bidfloorcur: "EUR",
+			Banner: &openrtb.Banner{W: 1, H: 1},
+		}},
+	}
+	snap, err := view.RunRequest(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bid := build.NewBid("b1", "1", 0.1).Banner().Build()
+	res, err := build.NewBidResponse("a1").Currency("USD").AddSeatBid("s", bid).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Response(snap, res)
+	if !r.OK() || !r.Has(CodeFloorCurDiff) || r.Has(CodePriceBelowFloor) {
+		t.Fatalf("got %+v", r)
+	}
+}
+
+func TestResponseCurWhitespaceTrimmed(t *testing.T) {
+	snap := bannerSnap(t)
+	bid := build.NewBid("b1", "1", 0.5).Banner().Build()
+	res, err := build.NewBidResponse("a1").Currency("USD").AddSeatBid("s", bid).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Cur = "  USD  "
+	r := Response(snap, res)
+	if !r.OK() || r.Has(CodeCurNotAllowed) || !r.Has(CodePriceBelowFloor) {
+		t.Fatalf("got %+v", r)
+	}
+}
+
+func TestResponseNilMalformed(t *testing.T) {
+	r := Response(nil, nil)
+	if r.OK() || !r.Has(CodeMalformed) {
+		t.Fatalf("got %+v", r)
+	}
+}
+
+func TestResponseEmptyBidMalformed(t *testing.T) {
+	snap := bannerSnap(t)
+	res := &openrtb.BidResponse{Id: "a1", Cur: "USD", Seatbid: []*openrtb.SeatBid{{Seat: "s"}}}
+	r := Response(snap, res)
+	if r.OK() || !r.Has(CodeMalformed) {
+		t.Fatalf("got %+v", r)
+	}
+}
+
+func TestResponseBlankCurSkipsCurAndFloor(t *testing.T) {
+	snap := bannerSnap(t)
+	bid := build.NewBid("b1", "1", 0.5).Banner().Build()
+	res, err := build.NewBidResponse("a1").Currency("USD").AddSeatBid("s", bid).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Cur = "   "
+	r := Response(snap, res)
+	if !r.OK() || r.Has(CodeCurNotAllowed) || r.Has(CodePriceBelowFloor) {
+		t.Fatalf("got %+v", r)
+	}
+}
+
+func TestCurNotAllowed(t *testing.T) {
+	snap := bannerSnap(t)
+	bid := build.NewBid("b1", "1", 2).Banner().Build()
+	res, err := build.NewBidResponse("a1").Currency("EUR").AddSeatBid("s", bid).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Response(snap, res)
+	if !r.OK() || !r.Has(CodeCurNotAllowed) {
 		t.Fatalf("got %+v", r)
 	}
 }
