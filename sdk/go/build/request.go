@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"strings"
 
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
 	"github.com/oakrtb/openrtb/sdk/go/schema"
@@ -16,7 +17,7 @@ type BidRequestBuilder struct {
 // NewBidRequest 创建请求构建器；id 为必填（拍卖标识）。
 func NewBidRequest(id string) *BidRequestBuilder {
 	b := &BidRequestBuilder{req: &openrtb.BidRequest{Id: id}}
-	if id == "" {
+	if strings.TrimSpace(id) == "" {
 		b.err = fmt.Errorf("build: BidRequest.id is required")
 	}
 	return b
@@ -173,14 +174,19 @@ func (b *BidRequestBuilder) Build() (*openrtb.BidRequest, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
-	if b.req.Id == "" {
+	if strings.TrimSpace(b.req.Id) == "" {
 		return nil, fmt.Errorf("build: BidRequest.id is required")
 	}
 	if b.req.At == 0 {
-		return nil, fmt.Errorf("build: BidRequest.at is required (use FirstPrice/SecondPricePlus/AuctionType)")
+		return nil, fmt.Errorf("build: BidRequest.at is required")
 	}
 	if len(b.req.Cur) == 0 {
 		return nil, fmt.Errorf("build: BidRequest.cur is required (at least one ISO-4217 code)")
+	}
+	for i, c := range b.req.Cur {
+		if strings.TrimSpace(c) == "" {
+			return nil, fmt.Errorf("build: BidRequest.cur[%d] is blank", i)
+		}
 	}
 	if len(b.req.Imp) == 0 {
 		return nil, fmt.Errorf("build: BidRequest.imp requires at least one Imp")
@@ -237,7 +243,7 @@ func checkImp(imp *openrtb.Imp, i int) error {
 	if imp == nil {
 		return fmt.Errorf("build: imp[%d] is nil", i)
 	}
-	if imp.Id == "" {
+	if strings.TrimSpace(imp.Id) == "" {
 		return fmt.Errorf("build: imp[%d].id is required", i)
 	}
 	formats := 0
@@ -261,7 +267,7 @@ func checkImp(imp *openrtb.Imp, i int) error {
 	}
 	if imp.Native != nil {
 		formats++
-		if imp.Native.Request == "" {
+		if strings.TrimSpace(imp.Native.Request) == "" {
 			return fmt.Errorf("build: imp[%d].native.request is required", i)
 		}
 	}

@@ -183,7 +183,7 @@ fn bid_response_build_needs_seatbid_or_no_bid() {
     let err = BidResponseBuilder::new("auction-1")
         .build()
         .unwrap_err();
-    assert!(err.contains("seatbid") || err.contains("no_bid"));
+    assert!(err.contains("seatbid") || err.contains("noBid"));
 }
 
 #[test]

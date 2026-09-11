@@ -35,8 +35,8 @@ impl BidResponseBuilder {
     /// 创建 Builder；`request_id` 须回显 BidRequest.id。
     pub fn new(request_id: impl Into<String>) -> Self {
         let id = request_id.into();
-        let error = if id.is_empty() {
-            Some("BidResponse.id is required (echo BidRequest.id)".into())
+        let error = if id.trim().is_empty() {
+            Some("build: BidResponse.id is required (echo BidRequest.id)".into())
         } else {
             None
         };
@@ -74,7 +74,7 @@ impl BidResponseBuilder {
     /// 追加一个 SeatBid；`bids` 至少含一条 Bid。
     pub fn add_seat_bid(mut self, seat: &str, bids: Vec<Value>) -> Self {
         if bids.is_empty() {
-            self.error = Some("SeatBid requires at least one Bid".into());
+            self.error = Some("build: SeatBid requires at least one Bid".into());
             return self;
         }
         // Switching to a bid clears structured no-bid.
@@ -92,29 +92,29 @@ impl BidResponseBuilder {
         if let Some(e) = self.error {
             return Err(e);
         }
-        if self.cur.is_empty() {
-            return Err("BidResponse.cur is required (ISO-4217)".into());
+        if self.cur.trim().is_empty() {
+            return Err("build: BidResponse.cur is required (ISO-4217)".into());
         }
         if self.seatbid.is_empty() && !self.no_bid_set {
-            return Err("BidResponse needs seatbid[] or no_bid(nbr)".into());
+            return Err("build: BidResponse needs seatbid[] or noBid(nbr)".into());
         }
         for (i, sb) in self.seatbid.iter().enumerate() {
             let bids = sb
                 .get("bid")
                 .and_then(|v| v.as_array())
-                .ok_or_else(|| format!("seatbid[{i}].bid missing"))?;
+                .ok_or_else(|| format!("build: seatbid[{i}].bid missing"))?;
             for (j, bid) in bids.iter().enumerate() {
                 let id = bid.get("id").and_then(|v| v.as_str()).unwrap_or("");
                 let impid = bid.get("impid").and_then(|v| v.as_str()).unwrap_or("");
                 let price = bid.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                if id.is_empty() || impid.is_empty() {
+                if id.trim().is_empty() || impid.trim().is_empty() {
                     return Err(format!(
-                        "seatbid[{i}].bid[{j}] requires id and impid"
+                        "build: seatbid[{i}].bid[{j}] requires id and impid"
                     ));
                 }
                 if price <= 0.0 {
                     return Err(format!(
-                        "seatbid[{i}].bid[{j}].price must be > 0"
+                        "build: seatbid[{i}].bid[{j}].price must be > 0"
                     ));
                 }
             }

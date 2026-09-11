@@ -132,7 +132,7 @@ pub fn imp_ready_mtype(imp: &ImpView<'_>, mtype: i64) -> FitResult {
                 CODE_MTYPE_UNKNOWN,
                 Severity::Error,
                 format!("{path}.mtype"),
-                "mtype must be 1–4 for imp_ready",
+                "mtype must be 1–4 for ImpReady",
             )],
         };
     }

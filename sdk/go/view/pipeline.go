@@ -50,7 +50,7 @@ func (p *RequestPipeline) Shared() *RequestPipeline {
 		return p
 	}
 	if !p.gated {
-		p.err = fmt.Errorf("pipeline: call LightGate first")
+		p.err = fmt.Errorf("pipeline: call lightGate first")
 		return p
 	}
 	p.shared = shared(p.req)
@@ -64,7 +64,7 @@ func (p *RequestPipeline) Imps() *RequestPipeline {
 		return p
 	}
 	if !p.pinned {
-		p.err = fmt.Errorf("pipeline: call Shared first")
+		p.err = fmt.Errorf("pipeline: call shared first")
 		return p
 	}
 	imps := make([]ImpView, 0, len(p.req.Imp))

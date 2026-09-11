@@ -47,7 +47,7 @@ public final class Fit {
               IssueCode.MTYPE_UNKNOWN,
               Severity.ERROR,
               path + ".mtype",
-              "mtype must be 1–4 for impReady"));
+              "mtype must be 1–4 for ImpReady"));
       return FitResult.of(issues);
     }
     return impReadyChosen(imp, chosen, path, issues);

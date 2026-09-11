@@ -424,7 +424,7 @@ impl<'a> RequestPipeline<'a> {
             return self;
         }
         if !self.gated {
-            self.err = Some("pipeline: call light_gate first".into());
+            self.err = Some("pipeline: call lightGate first".into());
             return self;
         }
         self.shared = Some(request_shared(self.req));
@@ -877,7 +877,7 @@ impl<'a> ResponsePipeline<'a> {
             return self;
         }
         if !self.gated {
-            self.err = Some("pipeline: call light_gate first".into());
+            self.err = Some("pipeline: call lightGate first".into());
             return self;
         }
         self.shared = Some(response_shared(self.res));
@@ -1267,14 +1267,14 @@ mod tests {
             "imp": [{"id": "1", "banner": {"w": 1, "h": 1}}]
         });
         let err = RequestPipeline::of(&req).shared().snapshot().unwrap_err();
-        assert!(err.contains("light_gate"));
+        assert!(err.contains("lightGate"));
     }
 
     #[test]
     fn response_pipeline_step_order_error() {
         let res = serde_json::json!({"id": "r", "cur": "USD"});
         let err = ResponsePipeline::of(&res).shared().snapshot().unwrap_err();
-        assert!(err.contains("light_gate"));
+        assert!(err.contains("lightGate"));
     }
 
     #[test]

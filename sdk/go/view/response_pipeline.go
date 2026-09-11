@@ -50,7 +50,7 @@ func (p *ResponsePipeline) Shared() *ResponsePipeline {
 		return p
 	}
 	if !p.gated {
-		p.err = fmt.Errorf("pipeline: call LightGate first")
+		p.err = fmt.Errorf("pipeline: call lightGate first")
 		return p
 	}
 	p.shared = responseShared(p.res)
@@ -64,7 +64,7 @@ func (p *ResponsePipeline) Bids() *ResponsePipeline {
 		return p
 	}
 	if !p.pinned {
-		p.err = fmt.Errorf("pipeline: call Shared first")
+		p.err = fmt.Errorf("pipeline: call shared first")
 		return p
 	}
 	p.seatBids, p.bids = viewSeatBids(p.res)
