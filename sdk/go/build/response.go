@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"strings"
 
 	openrtb "github.com/oakrtb/openrtb/sdk/go/oakrtb/v2"
 	"github.com/oakrtb/openrtb/sdk/go/schema"
@@ -17,7 +18,7 @@ type BidResponseBuilder struct {
 // NewBidResponse 为给定 BidRequest.id 创建响应构建器。
 func NewBidResponse(requestID string) *BidResponseBuilder {
 	b := &BidResponseBuilder{res: &openrtb.BidResponse{Id: requestID, Cur: "USD"}}
-	if requestID == "" {
+	if strings.TrimSpace(requestID) == "" {
 		b.err = fmt.Errorf("build: BidResponse.id is required (echo BidRequest.id)")
 	}
 	return b
@@ -75,21 +76,21 @@ func (b *BidResponseBuilder) Build() (*openrtb.BidResponse, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
-	if b.res.Id == "" {
+	if strings.TrimSpace(b.res.Id) == "" {
 		return nil, fmt.Errorf("build: BidResponse.id is required")
 	}
-	if b.res.Cur == "" {
-		return nil, fmt.Errorf("build: BidResponse.cur is required (ISO-4217; default USD if unset via Currency)")
+	if strings.TrimSpace(b.res.Cur) == "" {
+		return nil, fmt.Errorf("build: BidResponse.cur is required (ISO-4217)")
 	}
 	if len(b.res.Seatbid) == 0 && !b.noBidSet {
-		return nil, fmt.Errorf("build: BidResponse needs seatbid[] or NoBid(nbr)")
+		return nil, fmt.Errorf("build: BidResponse needs seatbid[] or noBid(nbr)")
 	}
 	for i, sb := range b.res.Seatbid {
 		for j, bid := range sb.Bid {
 			if bid == nil {
 				return nil, fmt.Errorf("build: seatbid[%d].bid[%d] is nil", i, j)
 			}
-			if bid.Id == "" || bid.Impid == "" {
+			if strings.TrimSpace(bid.Id) == "" || strings.TrimSpace(bid.Impid) == "" {
 				return nil, fmt.Errorf("build: seatbid[%d].bid[%d] requires id and impid", i, j)
 			}
 			if bid.Price <= 0 {

@@ -21,7 +21,7 @@ public final class BidResponseBuilder {
 
   private BidResponseBuilder(String requestId) {
     if (requestId == null || requestId.isBlank()) {
-      error = "BidResponse.id is required (echo BidRequest.id)";
+      error = "build: BidResponse.id is required (echo BidRequest.id)";
     } else {
       res.setId(requestId);
     }
@@ -84,7 +84,7 @@ public final class BidResponseBuilder {
    */
   public BidResponseBuilder addSeatBid(String seat, Bid... bids) {
     if (bids == null || bids.length == 0) {
-      throw new IllegalArgumentException("SeatBid requires at least one Bid");
+      throw new IllegalArgumentException("build: SeatBid requires at least one Bid");
     }
     // Switching to a bid clears structured no-bid.
     noBidSet = false;
@@ -107,21 +107,21 @@ public final class BidResponseBuilder {
     if (error != null) {
       throw new IllegalStateException(error);
     }
-    if (res.getCur().isEmpty()) {
-      throw new IllegalStateException("BidResponse.cur is required (ISO-4217)");
+    if (res.getCur().isBlank()) {
+      throw new IllegalStateException("build: BidResponse.cur is required (ISO-4217)");
     }
     if (res.getSeatbidCount() == 0 && !noBidSet) {
-      throw new IllegalStateException("BidResponse needs seatbid[] or noBid(nbr)");
+      throw new IllegalStateException("build: BidResponse needs seatbid[] or noBid(nbr)");
     }
     for (int i = 0; i < res.getSeatbidCount(); i++) {
       SeatBid sb = res.getSeatbid(i);
       for (int j = 0; j < sb.getBidCount(); j++) {
         Bid bid = sb.getBid(j);
-        if (bid.getId().isEmpty() || bid.getImpid().isEmpty()) {
-          throw new IllegalStateException("seatbid[" + i + "].bid[" + j + "] requires id and impid");
+        if (bid.getId().isBlank() || bid.getImpid().isBlank()) {
+          throw new IllegalStateException("build: seatbid[" + i + "].bid[" + j + "] requires id and impid");
         }
         if (bid.getPrice() <= 0) {
-          throw new IllegalStateException("seatbid[" + i + "].bid[" + j + "].price must be > 0");
+          throw new IllegalStateException("build: seatbid[" + i + "].bid[" + j + "].price must be > 0");
         }
       }
     }

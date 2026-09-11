@@ -25,7 +25,7 @@ public final class BidRequestBuilder {
 
   private BidRequestBuilder(String id) {
     if (id == null || id.isBlank()) {
-      error = "BidRequest.id is required";
+      error = "build: BidRequest.id is required";
     } else {
       req.setId(id);
     }
@@ -232,15 +232,32 @@ public final class BidRequestBuilder {
       throw new IllegalStateException(error);
     }
     if (req.getAt() == 0) {
-      throw new IllegalStateException(
-          "BidRequest.at is required (use firstPrice/secondPricePlus/auctionType)");
+      throw new IllegalStateException("build: BidRequest.at is required");
     }
     if (req.getCurCount() == 0) {
       throw new IllegalStateException(
-          "BidRequest.cur is required (at least one ISO-4217 code)");
+          "build: BidRequest.cur is required (at least one ISO-4217 code)");
+    }
+    for (int i = 0; i < req.getCurCount(); i++) {
+      if (req.getCur(i).isBlank()) {
+        throw new IllegalStateException("build: BidRequest.cur[" + i + "] is blank");
+      }
     }
     if (req.getImpCount() == 0) {
-      throw new IllegalStateException("BidRequest.imp requires at least one Imp");
+      throw new IllegalStateException("build: BidRequest.imp requires at least one Imp");
+    }
+    int inv = 0;
+    if (req.hasSite()) {
+      inv++;
+    }
+    if (req.hasApp()) {
+      inv++;
+    }
+    if (req.hasDooh()) {
+      inv++;
+    }
+    if (inv > 1) {
+      throw new IllegalStateException("build: site/app/dooh are mutually exclusive");
     }
     for (int i = 0; i < req.getImpCount(); i++) {
       checkImp(req.getImp(i), i);
@@ -268,37 +285,37 @@ public final class BidRequestBuilder {
   }
 
   private static void checkImp(Imp imp, int i) {
-    if (imp.getId().isEmpty()) {
-      throw new IllegalStateException("imp[" + i + "].id is required");
+    if (imp.getId().isBlank()) {
+      throw new IllegalStateException("build: imp[" + i + "].id is required");
     }
     int formats = 0;
     if (imp.hasBanner()) {
       formats++;
       var b = imp.getBanner();
       if (b.getW() == 0 && b.getH() == 0 && b.getFormatCount() == 0) {
-        throw new IllegalStateException("imp[" + i + "].banner needs w/h or format[]");
+        throw new IllegalStateException("build: imp[" + i + "].banner needs w/h or format[]");
       }
     }
     if (imp.hasVideo()) {
       formats++;
       if (imp.getVideo().getMimesCount() == 0) {
-        throw new IllegalStateException("imp[" + i + "].video.mimes is required");
+        throw new IllegalStateException("build: imp[" + i + "].video.mimes is required");
       }
     }
     if (imp.hasAudio()) {
       formats++;
       if (imp.getAudio().getMimesCount() == 0) {
-        throw new IllegalStateException("imp[" + i + "].audio.mimes is required");
+        throw new IllegalStateException("build: imp[" + i + "].audio.mimes is required");
       }
     }
     if (imp.hasNative()) {
       formats++;
-      if (imp.getNative().getRequest().isEmpty()) {
-        throw new IllegalStateException("imp[" + i + "].native.request is required");
+      if (imp.getNative().getRequest().isBlank()) {
+        throw new IllegalStateException("build: imp[" + i + "].native.request is required");
       }
     }
     if (formats == 0) {
-      throw new IllegalStateException("imp[" + i + "] needs banner, video, audio, or native");
+      throw new IllegalStateException("build: imp[" + i + "] needs banner, video, audio, or native");
     }
   }
 }

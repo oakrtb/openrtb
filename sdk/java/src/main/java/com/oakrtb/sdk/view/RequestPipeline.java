@@ -111,14 +111,14 @@ public final class RequestPipeline {
 
   private void requireGated() {
     if (!gated) {
-      throw new IllegalStateException("pipeline: call lightGate() first");
+      throw new IllegalStateException("pipeline: call lightGate first");
     }
   }
 
   private void requirePinned() {
     requireGated();
     if (!pinned) {
-      throw new IllegalStateException("pipeline: call shared() first");
+      throw new IllegalStateException("pipeline: call shared first");
     }
   }
 

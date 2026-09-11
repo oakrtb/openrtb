@@ -29,8 +29,8 @@ impl BidRequestBuilder {
     /// 创建 Builder；`id` 不能为空。
     pub fn new(id: impl Into<String>) -> Self {
         let id = id.into();
-        let error = if id.is_empty() {
-            Some("BidRequest.id is required".into())
+        let error = if id.trim().is_empty() {
+            Some("build: BidRequest.id is required".into())
         } else {
             None
         };
@@ -150,18 +150,24 @@ impl BidRequestBuilder {
         }
         let at = match self.at {
             Some(v) if v != 0 => v,
-            _ => {
-                return Err(
-                    "BidRequest.at is required (use first_price/second_price_plus/auction_type)"
-                        .into(),
-                )
-            }
+            _ => return Err("build: BidRequest.at is required".into()),
         };
         if self.cur.is_empty() {
-            return Err("BidRequest.cur is required (at least one ISO-4217 code)".into());
+            return Err("build: BidRequest.cur is required (at least one ISO-4217 code)".into());
+        }
+        for (i, c) in self.cur.iter().enumerate() {
+            if c.trim().is_empty() {
+                return Err(format!("build: BidRequest.cur[{i}] is blank"));
+            }
         }
         if self.imps.is_empty() {
-            return Err("BidRequest.imp requires at least one Imp".into());
+            return Err("build: BidRequest.imp requires at least one Imp".into());
+        }
+        let inv = self.site.is_some() as u8
+            + self.app.is_some() as u8
+            + self.dooh.is_some() as u8;
+        if inv > 1 {
+            return Err("build: site/app/dooh are mutually exclusive".into());
         }
         for (i, imp) in self.imps.iter().enumerate() {
             check_imp(imp, i)?;
@@ -224,17 +230,17 @@ impl BidRequestBuilder {
 fn check_imp(imp: &Value, i: usize) -> Result<(), String> {
     let obj = imp
         .as_object()
-        .ok_or_else(|| format!("imp[{i}] must be object"))?;
+        .ok_or_else(|| format!("build: imp[{i}] must be object"))?;
     let id = obj.get("id").and_then(|v| v.as_str()).unwrap_or("");
-    if id.is_empty() {
-        return Err(format!("imp[{i}].id is required"));
+    if id.trim().is_empty() {
+        return Err(format!("build: imp[{i}].id is required"));
     }
     let mut formats = 0;
     if let Some(banner) = obj.get("banner") {
         formats += 1;
         let b = banner
             .as_object()
-            .ok_or_else(|| format!("imp[{i}].banner must be object"))?;
+            .ok_or_else(|| format!("build: imp[{i}].banner must be object"))?;
         let w = b.get("w").and_then(|v| v.as_i64()).unwrap_or(0);
         let h = b.get("h").and_then(|v| v.as_i64()).unwrap_or(0);
         let formats_len = b
@@ -243,7 +249,7 @@ fn check_imp(imp: &Value, i: usize) -> Result<(), String> {
             .map(|a| a.len())
             .unwrap_or(0);
         if w == 0 && h == 0 && formats_len == 0 {
-            return Err(format!("imp[{i}].banner needs w/h or format[]"));
+            return Err(format!("build: imp[{i}].banner needs w/h or format[]"));
         }
     }
     if let Some(video) = obj.get("video") {
@@ -254,7 +260,7 @@ fn check_imp(imp: &Value, i: usize) -> Result<(), String> {
             .map(|a| a.len())
             .unwrap_or(0);
         if mimes == 0 {
-            return Err(format!("imp[{i}].video.mimes is required"));
+            return Err(format!("build: imp[{i}].video.mimes is required"));
         }
     }
     if let Some(audio) = obj.get("audio") {
@@ -265,7 +271,7 @@ fn check_imp(imp: &Value, i: usize) -> Result<(), String> {
             .map(|a| a.len())
             .unwrap_or(0);
         if mimes == 0 {
-            return Err(format!("imp[{i}].audio.mimes is required"));
+            return Err(format!("build: imp[{i}].audio.mimes is required"));
         }
     }
     if let Some(native) = obj.get("native") {
@@ -274,13 +280,13 @@ fn check_imp(imp: &Value, i: usize) -> Result<(), String> {
             .get("request")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        if req.is_empty() {
-            return Err(format!("imp[{i}].native.request is required"));
+        if req.trim().is_empty() {
+            return Err(format!("build: imp[{i}].native.request is required"));
         }
     }
     if formats == 0 {
         return Err(format!(
-            "imp[{i}] needs banner, video, audio, or native"
+            "build: imp[{i}] needs banner, video, audio, or native"
         ));
     }
     Ok(())
