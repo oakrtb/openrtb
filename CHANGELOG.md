@@ -2,6 +2,7 @@
 
 ## 0.2.0 — 2026-09-07
 
+- 开源基建：双语 README 安装段、CONTRIBUTING / SECURITY、Issue & PR 模板；GitHub Release `v0.2.0`。
 - **Breaking（SDK API）**：包/模块 `inspect` → `view`（热路径读模型）并精简入口。Java：`com.oakrtb.sdk.view`（`RequestViews`/`ResponseViews`，原 `RequestInspect`/`ResponseInspect`）；步骤 `shared`（原 `pinShared`/`sharedOf`）、`imps`/`bids`（原 `viewImps`/`viewBids`）；一键入口 **仅** `RequestPipeline.run` / `ResponsePipeline.run`（已移除与 Pipeline 重复的 `of` / `viewsAfterGate` 等）。Go：`github.com/oakrtb/openrtb/sdk/go/view`，入口 `RunRequest` / `RunResponse`（已移除 `ViewRequest`/`ViewResponse`）。Rust：`oakrtb_sdk::view`，入口 `run_request` / `run_response`（已移除 `view_request`/`view_response` 及 `*Result`）。`MarkupMask` / `Inventory` / LightGate / Snapshot 保留。文档：`docs/view-usage.md`（原 `inspect-usage.md`）。
 - **Breaking（SDK API）**：Fit：`bidFit`/`responseFit` → `bid`/`response`（Go `Bid`/`Response`，Rust `bid`/`response`）。`ok()`/`OK()` 仅表示无 ERROR；低价/屏蔽/超时等为 WARN，政策拒投须读 `warnings()`/`has()`。
 - Fit / LightGate 一致性：底价仅当响应 `cur` 与 `imp.bidfloorcur` 均非空白且相等才比价（不隐式 USD）；`CUR_NOT_ALLOWED` 与 floor 同 trim/blank 规则；Rust `fit::response` 对非 object / 非 array `seatbid` / 空 bid 列表发 `MALFORMED`；LightGate 拒绝空白 `id`/`cur`/`imp.id` 及空白 `BidRequest.cur[]` 项；Pipeline `shared()` pin-once。

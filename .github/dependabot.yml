@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+  - package-ecosystem: pip
+    directory: "/scripts"
+    schedule:
+      interval: monthly
+  - package-ecosystem: gomod
+    directory: "/sdk/go"
+    schedule:
+      interval: monthly
+  - package-ecosystem: maven
+    directory: "/sdk/java"
+    schedule:
+      interval: monthly
+  - package-ecosystem: cargo
+    directory: "/sdk/rust"
+    schedule:
+      interval: monthly
